@@ -97,6 +97,21 @@ Swagger UI 是 API 文件與測試介面；FastAPI 依程式碼自動產生 Open
 ### Q1
 - Prompt: 哪些指令要進 venv？哪些不用？前面沒在 venv 跑 pg_ctl 要重做嗎？
 - AI 建議摘要: `pg_ctl` / `psql` 不用 venv（管資料庫）。`pip`、`db_test.py`、`run.bat`／uvicorn 要 venv（管 Python 套件）。沒在 venv 跑開停 DB 沒關係，不必為此重做。
+
+`pg_ctl`：管「伺服器開或關」
+`psql`：管「連進去下指令」
+| | `pg_ctl` | `psql` |
+|---|---|---|
+| 比喻 | 開門／關門 | 進門辦事 |
+| 典型指令 | start / stop / status | SELECT / CREATE / `\q` |
+| 你在哪打 | PowerShell | 進入後的 `postgres=#` / `fastapi_dev=>` |
+
+順序永遠是：
+
+```text
+pg_ctl start  →  psql 連線做事  →  （用完可）psql \q  →  （不需要時）pg_ctl stop
+```
+
 - 我驗證的方法: `(venv)` 下跑 `pg_ctl status` 仍正常；用 `venv\Scripts\python.exe` 跑 `db_test.py` 才保證套件正確。
 - 最後採用: 開 DB 用完整路徑即可；測連線／跑 API 一定進 venv。
 
@@ -130,6 +145,61 @@ Swagger UI 是 API 文件與測試介面；FastAPI 依程式碼自動產生 Open
 ## 7. Reflection (反思)
 搞懂「目錄不對指令就失效」和 venv／psql／pg_ctl 各自管什麼。
 - AI 誤判風險: 一次幫做完會學不到；應自己打指令再對答案。
-- 下次: 先確認 `pwd`，再決定用相對路徑還是完整路徑。
+---
+
+# W03
+## 1. 本週 Project Goal
+用 FastAPI 同時服務前端靜態頁與 `/api`，經 IIS 公開 HTTPS，並能解釋Swagger／快取／資料庫連線問題。
+
+## 2. 本週完成
+- [x] `run.bat`：`0.0.0.0:7777`；靜態根目錄 `webui-lab`；API 在 `/api`
+- [x] 公開 `https://demo.wke.csie.ncnu.edu.tw/s115321503/`；Swagger 改到 `/api/docs`（相對路徑載入 openapi）
+- [x] 用 Swagger 測 `items`／`note`；弄清連線在 `.env` 的 `DATABASE_URL`
+
+## 3. 問 AI 的三個重要問題
+- [x] Q1 程式跑在哪？為何沒開視窗也在跑？
+- [x] Q2 為何 `/docs` 空白／老師是 `/api/docs`？無 `/` 排版為何壞？
+- [x] Q3 `note` 沒回應？連線資訊在哪？`main.py` 怎麼讀 DB？
+
+### Q1
+- Prompt: 我沒開 run.bat，公開網址為何還進得去？行程在哪？
+- AI 建議摘要: 真正跑網站的是本機 uvicorn（7777）；IIS 只反向代理。可能是先前背景啟動的 `run.bat`，沒有標題視窗所以找不到。關掉後 demo 會掛。
+- 我驗證的方法: 查 port 7777 的 PID／命令列有 `uvicorn`；`GET /guide.html` 出現在終端機 log。
+- 最後採用: 要公開測就自己開終端機跑 `.\run.bat`；停用 Ctrl+C 或結束該 python／cmd。
+
+### Q2
+- Prompt: 老師 `/api/docs` 有內容，我的 `/docs` 顯示 Failed to load openapi.json；網址無結尾 `/` 排版跑掉？
+- AI 建議摘要: FastAPI 預設文件在 `/docs`；子路徑下瀏覽器去抓網站根的 `/openapi.json` 會 404。改掛 `/api/docs` 並用相對路徑 `openapi.json`。無 `/` 時相對 CSS 會解析到錯誤目錄，應使用 `.../s115321503/`。
+- 我驗證的方法: 本機 `/api/docs`、`/api/openapi.json` 200；公開用有 `/` 的網址；304 代表快取未改檔。
+- 最後採用: 文件網址用 `/api/docs`；對外連結一律帶尾斜線；改靜態檔用無痕或 Disable cache。
+
+### Q3
+- Prompt: note 無回復；如何測 items／note？
+- AI 建議摘要: `main.py` 的 note 只負責查表。DB 沒開會一直等（像沒回應）。items 不需 DB；note 需要正確 id（我的資料是 7/8/9 不是 1）。
+- 我驗證的方法: `pg_ctl status`；Swagger 測 POST `/api/items` 與 GET `/api/note/7`。
+- 最後採用: 測 note 前先開 PostgreSQL；用 `SELECT id FROM notes` 確認 id。
+
+## 4. Web Concept of the Week
+```text
+瀏覽器 →（HTTPS）IIS →（HTTP）本機 uvicorn:7777
+         ├─ 靜態：webui-lab 的 html/css
+         └─ /api/...：JSON（note 再連 PostgreSQL）
+```
+304 = 瀏覽器用快取；不是錯誤。
+
+## 5. Debugging Record
+- Problem: Swagger「Failed to load API definition」／note 無回應
+- Error: 404 `/openapi.json`；或連線逾時；或 404 Note not found
+- Root cause: 子路徑相對／絕對路徑；DB 未啟動；id 不存在
+- Fix: `/api/docs` + 相對 openapi；`pg_ctl start`；改測存在的 note id
+
+## 6. Security Check
+- `.env`（含 DATABASE_URL）不進 Git
+- 靜態檔限制 html/css，減少誤公開其他檔
+- 公開 `/api/docs` 會暴露 API 形狀，之後需認證／授權
+
+## 7. Reflection (反思)
+空白多半是 openapi 路徑錯。
+- 下次: 公開測前記得 run.bat + DB；Swagger 用 `/api/docs`；note 先查 id。
 
 ---
