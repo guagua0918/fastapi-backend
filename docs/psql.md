@@ -49,9 +49,13 @@ venv\Scripts\activate      # Windows Powershell, Set-ExecutionPolicy
 pip install fastapi uvicorn[standard]
 ```
 
+實際能跑的:
+
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\venv\Scripts\Activate.ps1
+
+deactivate
 ```
 
 建立專案結構：開始學習與思考自己或團隊習慣的program structures
@@ -337,6 +341,132 @@ python .\app\core\db_test.py
 - VScode Extension: SQLTools PostgreSQL/Cockroach Driver，方便VSCode可以執行SQL
 - psql: 另外建立db帳號 (postgres權限勿濫用)，須要給予public schema建表權限
 - AI coding會建立更清楚的program structures。E.g. routers (REST api path) -> repositories (get data SQL) -> schemas (response model)
+
+---
+
+
+
+## 資料庫流程指令集
+
+
+
+### A. 啟動 / 停止 PostgreSQL（ZIP · 5433）
+
+```powershell
+# 狀態
+& "$env:USERPROFILE\pgsql\bin\pg_ctl.exe" -D "$env:USERPROFILE\pgsql-data" status
+
+# 啟動
+& "$env:USERPROFILE\pgsql\bin\pg_ctl.exe" `
+  -D "$env:USERPROFILE\pgsql-data" `
+  -o "-p 5433" `
+  -l "$env:USERPROFILE\pgsql-data\server.log" `
+  start
+
+# 停止
+& "$env:USERPROFILE\pgsql\bin\pg_ctl.exe" -D "$env:USERPROFILE\pgsql-data" stop
+```
+
+
+
+### B. 用 psql 連線
+
+```powershell
+cd $env:USERPROFILE\pgsql
+
+# 管理員（建帳號用）
+$env:PGPASSWORD = 'postgres'
+.\bin\psql.exe -h localhost -p 5433 -U postgres -d postgres
+
+# 開發帳號（日常用）
+$env:PGPASSWORD = 'dev_password'
+.\bin\psql.exe -h localhost -p 5433 -U dev_user -d fastapi_dev
+```
+
+
+
+### C. 在 psql 裡（看到 `xxx=#` 或 `xxx=>`）
+
+```sql
+-- 建開發帳號／庫（用 postgres 身分，已存在可略）
+CREATE USER dev_user WITH PASSWORD 'dev_password';
+CREATE DATABASE fastapi_dev OWNER dev_user;
+\c fastapi_dev
+GRANT ALL ON SCHEMA public TO dev_user;
+
+-- 檢查
+SELECT version();
+SELECT current_database(), current_user;
+\du
+\l
+\dt
+
+-- notes 表
+CREATE TABLE notes (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO notes (title, content) VALUES
+    ('第一則', '內容 A'),
+    ('第二則', '內容 B'),
+    ('第三則', '內容 C');
+
+SELECT * FROM notes;
+
+-- 離開 psql（回到 PowerShell）
+\q
+```
+
+
+
+### D. `.env` : 連線資訊
+
+
+
+### E. Python 測連線（要在專案 + venv）
+
+```powershell
+cd C:\Users\admin\code\fastapi-backend
+.\venv\Scripts\Activate.ps1
+python .\app\core\db_test.py
+# 期望：連線成功: fastapi_dev
+```
+
+
+
+### F. 跑 API 測 note
+
+```powershell
+cd C:\Users\admin\code\fastapi-backend
+.\venv\Scripts\Activate.ps1
+.\run.bat
+```
+
+瀏覽器：
+
+```text
+http://127.0.0.1:7777/docs
+http://127.0.0.1:7777/api/note/1
+```
+
+---
+
+
+
+## 最短心智圖
+
+```text
+pg_ctl start
+  → psql 建庫／建表／INSERT
+  → .env 寫連線字串
+  → (venv) python db_test.py
+  → (venv) run.bat → /api/note/{id}
+```
+
+記住：`psql` 裡只打 SQL；`\q` 出來後才能打 `pg_ctl`、`python`。
 
 ---
 
