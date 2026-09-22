@@ -85,8 +85,8 @@ Swagger UI 是 API 文件與測試介面；FastAPI 依程式碼自動產生 Open
 讓 PostgreSQL 可連線，用 `.env` 管理連線，並用 API 讀取 `notes`。
 
 ## 2. 本週完成
-- [x] 啟動 ZIP PostgreSQL（5433）、`dev_user` / `fastapi_dev`
-- [x] `.env` + `db_test.py` 測連線；`notes` 表與 3 筆資料
+- [x] 啟動 ZIP PostgreSQL（埠可自訂）、開發帳號／庫
+- [x] 本機 `.env` + `db_test.py` 測連線；`notes` 表與資料
 - [x] `GET /api/note/{id}`；學會用 venv 跑 Python
 
 ## 3. 問 AI 的三個重要問題
@@ -138,7 +138,7 @@ pg_ctl start  →  psql 連線做事  →  （用完可）psql \q  →  （不�
 - Fix: `cd $env:USERPROFILE\pgsql` 或 `"$env:USERPROFILE\pgsql\bin\pg_ctl.exe"`
 
 ## 6. Security Check
-- `.env` 不進 Git；教學用 `dev_password` 僅本機
+- `.env` 不進 Git；文件只寫佔位符，不寫真實密碼
 - SQL 用 `%s` 參數化，避免拼接注入
 - `/api/note/{id}` 尚未做登入（之後再補）
 
@@ -153,12 +153,12 @@ pg_ctl start  →  psql 連線做事  →  （用完可）psql \q  →  （不�
 
 ## 2. 本週完成
 - [x] `run.bat`：`0.0.0.0:7777`；靜態根目錄 `webui-lab`；API 在 `/api`
-- [x] 公開 `https://demo.wke.csie.ncnu.edu.tw/s115321503/`；Swagger 改到 `/api/docs`（相對路徑載入 openapi）
-- [x] 用 Swagger 測 `items`／`note`；弄清連線在 `.env` 的 `DATABASE_URL`
+- [x] 公開 demo 學號子路徑；Swagger 改到 `/api/docs`（相對路徑載入 openapi）
+- [x] 用 Swagger 測 `items`／`note`；連線只放本機 `.env` 的 `DATABASE_URL`
 
 ## 3. 問 AI 的三個重要問題
 - [x] Q1 程式跑在哪？為何沒開視窗也在跑？
-- [x] Q2 為何 `/docs` 空白／老師是 `/api/docs`？無 `/` 排版為何壞？
+- [x] Q2 路由怎麼對到 `main.py`？為何無尾 `/` 會壞、Swagger 要改路徑？
 - [x] Q3 `note` 沒回應？連線資訊在哪？`main.py` 怎麼讀 DB？
 
 ### Q1
@@ -168,10 +168,14 @@ pg_ctl start  →  psql 連線做事  →  （用完可）psql \q  →  （不�
 - 最後採用: 要公開測就自己開終端機跑 `.\run.bat`；停用 Ctrl+C 或結束該 python／cmd。
 
 ### Q2
-- Prompt: 老師 `/api/docs` 有內容，我的 `/docs` 顯示 Failed to load openapi.json；網址無結尾 `/` 排版跑掉？
-- AI 建議摘要: FastAPI 預設文件在 `/docs`；子路徑下瀏覽器去抓網站根的 `/openapi.json` 會 404。改掛 `/api/docs` 並用相對路徑 `openapi.json`。無 `/` 時相對 CSS 會解析到錯誤目錄，應使用 `.../s115321503/`。
-- 我驗證的方法: 本機 `/api/docs`、`/api/openapi.json` 200；公開用有 `/` 的網址；304 代表快取未改檔。
-- 最後採用: 文件網址用 `/api/docs`；對外連結一律帶尾斜線；改靜態檔用無痕或 Disable cache。
+- Prompt: 我不懂路由。請用 `main.py` 對應「公開網址 → 本機路徑」；並解釋無尾斜線排版壞掉、Swagger 空白。
+- AI 建議摘要:
+  - **路由**＝「這個 URL 路徑要叫哪個函式／哪個資料夾」。寫在 `@app.get(...)`、`@api_router...`、`app.mount(...)`。
+  - IIS 先剝掉學號前綴（如 `/s學號`），uvicorn 只看到後面；例如公開 `.../s學號/api/note/7` → 本機 `/api/note/7` → `get_note`。
+  - **尾斜線**：HTML 裡 `css/style.css` 是相對路徑。有 `/` 時目錄是 `.../s學號/`，CSS 正確；無 `/` 時瀏覽器把最後一段當檔名，CSS 會抓錯層。
+  - **Swagger**：關掉預設 `/docs`，改 `@app.get("/api/docs")`，且 `openapi_url="openapi.json"`（相對）才會在子路徑下抓到 `/api/openapi.json`。
+- 我驗證的方法: 有 `/` 的 demo 網址樣式正常；本機 `/api/docs` 可載入；對照 `main.py` 的 decorator／mount 與實際 URL。
+- 最後採用: 對外一律帶尾斜線的學號路徑；文件用 `/api/docs`；先畫「URL → 哪一行程式」再改 bug。
 
 ### Q3
 - Prompt: note 無回復；如何測 items／note？
@@ -180,26 +184,71 @@ pg_ctl start  →  psql 連線做事  →  （用完可）psql \q  →  （不�
 - 最後採用: 測 note 前先開 PostgreSQL；用 `SELECT id FROM notes` 確認 id。
 
 ## 4. Web Concept of the Week
+
+### 架構 ↔ `main.py`（路由在幹嘛）
+
 ```text
-瀏覽器 →（HTTPS）IIS →（HTTP）本機 uvicorn:7777
-         ├─ 靜態：webui-lab 的 html/css
-         └─ /api/...：JSON（note 再連 PostgreSQL）
+瀏覽器
+  │  https://demo.../s學號/guide.html
+  ▼
+IIS（只轉送，剝掉學號前綴）
+  │  轉成 → http://本機:7777/guide.html
+  ▼
+uvicorn（run.bat）讀 app.main:app
+  │
+  ├─ /api/docs          → @app.get("/api/docs") → swagger_ui()
+  ├─ /api/openapi.json  → FastAPI 內建（openapi_url=...）
+  ├─ /api/health 等     → api_router（prefix="/api"）→ include_router
+  ├─ /api/note/{id}     → get_note() → get_connection() → PostgreSQL
+  ├─ /                  → serve_index() → webui-lab/index.html
+  └─ /guide.html、/css/... → app.mount("/", HtmlCssOnlyStaticFiles(...))
+                              directory = webui-lab
 ```
-304 = 瀏覽器用快取；不是錯誤。
+
+對照表：
+
+| 你開的網址（公開） | uvicorn 實際路徑 | 程式哪一段 |
+|---|---|---|
+| `.../s學號/` | `/` | `serve_index` 或 mount 的 index |
+| `.../s學號/guide.html` | `/guide.html` | `HtmlCssOnlyStaticFiles` → 檔案 |
+| `.../s學號/api/note/7` | `/api/note/7` | `@api_router.get("/note/{note_id}")` |
+| `.../s學號/api/docs` | `/api/docs` | `@app.get("/api/docs")` |
+
+`APIRouter(prefix="/api")`：路由器上寫 `/note/...`，掛上後完整路徑變成 `/api/note/...`。  
+`app.mount("/", ...)`：上面沒被更精確路由吃掉的路徑，才丟給靜態檔。
+
+### 為何 `HtmlCssOnlyStaticFiles` 是 class？
+
+`StaticFiles` 已經會「依路徑讀檔回傳」。我們要**多一步檢查**：不是 `.html`／`.css` 就 404。
+
+- 用 **class 繼承** `StaticFiles`，只覆寫 `get_response`：先自己過濾，再 `super().get_response(...)` 沿用原本讀檔邏輯。
+- 之後 `app.mount(..., HtmlCssOnlyStaticFiles(directory=...))` 才能把「客製規則」掛進同一個靜態入口。
+- 若只寫普通函式，掛不上 Starlette／FastAPI 期待的「靜態檔應用」介面。
+
+### 尾斜線（相對路徑）
+
+頁面裡若寫 `href="css/style.css"`（相對）：
+
+| 網址列 | 瀏覽器怎麼組 CSS |
+|---|---|
+| `.../s學號/` | `.../s學號/css/style.css` ✓ |
+| `.../s學號`（無 `/`） | 常變成錯層（把最後一段當檔名）✗ |
+
+對外連結一律帶尾 `/`。304＝快取未改，不是錯誤。
 
 ## 5. Debugging Record
-- Problem: Swagger「Failed to load API definition」／note 無回應
-- Error: 404 `/openapi.json`；或連線逾時；或 404 Note not found
-- Root cause: 子路徑相對／絕對路徑；DB 未啟動；id 不存在
-- Fix: `/api/docs` + 相對 openapi；`pg_ctl start`；改測存在的 note id
+- Problem: Swagger「Failed to load API definition」／無 `/` 排版壞／note 無回應
+- Error: 404 `/openapi.json`；CSS 路徑錯；連線逾時或 Note not found
+- Root cause: 子路徑下絕對／相對路徑；尾斜線；DB 未啟動；id 不存在
+- Fix: `/api/docs` + 相對 openapi；網址帶 `/`；`pg_ctl start`；改測存在的 note id
 
 ## 6. Security Check
 - `.env`（含 DATABASE_URL）不進 Git
-- 靜態檔限制 html/css，減少誤公開其他檔
+- `HtmlCssOnlyStaticFiles` 限制只出 html/css，減少誤公開其他檔
 - 公開 `/api/docs` 會暴露 API 形狀，之後需認證／授權
 
 ## 7. Reflection (反思)
-空白多半是 openapi 路徑錯。
+不懂路由時先對表：URL → `main.py` 哪一行。空白多半是 openapi 路徑錯；排版壞先查尾 `/`。
 - 下次: 公開測前記得 run.bat + DB；Swagger 用 `/api/docs`；note 先查 id。
 
 ---

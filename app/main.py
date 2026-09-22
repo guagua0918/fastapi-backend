@@ -28,7 +28,7 @@ public_directory = Path(__file__).resolve().parents[2] / "webui-lab"
 
 @app.get("/api/docs", include_in_schema=False)
 def swagger_ui():
-    # 相對路徑：在 /s115321503/api/docs 下會正確抓到 /s115321503/api/openapi.json
+    # 相對路徑：在 /s學號/api/docs 下會正確抓到 /s學號/api/openapi.json
     return get_swagger_ui_html(
         openapi_url="openapi.json",
         title=app.title + " - Swagger UI",

@@ -23,11 +23,7 @@
 
 ---
 
-
-
 ## W1：FastAPI 專案架構與基礎 API
-
-
 
 ### 學習目標
 
@@ -124,8 +120,6 @@ git merge origin/main --allow-unrelated-histories
 git push -u origin main
 ```
 
-
-
 ### 驗收標準
 
 - [x] `/docs` 能正常開啟並看到自訂端點
@@ -134,31 +128,15 @@ git push -u origin main
 - [x] 學會 `.gitignore`：`!` 取消忽略，例如 !.env.example 會保留範例設定檔。
 - [x] add .env.example，並commit and push確認出現自github repo。
 
+### 本週筆記
 
-
-### Powershell經驗
-
-- AI：let powershell can run .ps1 by default ==> PowerShell can now run local .ps1 scripts by default for your user via `RemoteSigned`. Downloaded scripts must still be signed or unblocked (考慮到資安問題).
-
-
-
-### VSCode心得
-
-- 安裝軟體如Git，會寫入環境變數PATH，要完全結束VSCode (close all opened code windows)，reopen vscode才會在powershell環境生效。
-
-
-
-### Git心得
-
-- 本機先有 commit 時，GitHub 建立 repository 最好保持完全空白；不要同時勾選建立 README 或 LICENSE，這樣第一次 `git push -u origin main` 最簡單。
+- PowerShell：本機腳本可用 `RemoteSigned`；下載來的 `.ps1` 仍要留意簽章／解除封鎖。
+- VS Code：改 PATH（如裝 Git）後須關乾淨再開，終端機才吃得到。
+- Git：遠端新建 repo 儘量空白（勿先建 README／LICENSE），第一次 push 較單純。
 
 ---
 
-
-
 ## W2：PostgreSQL 安裝與連線
-
-
 
 ### 學習目標
 
@@ -230,7 +208,7 @@ cd "$env:USERPROFILE\pgsql"
 1. 在 `psql` 中建立開發用資料庫與使用者：
 
 ```sql
-CREATE USER dev_user WITH PASSWORD 'dev_password';
+CREATE USER dev_user WITH PASSWORD 'your_password';
 CREATE DATABASE fastapi_dev OWNER dev_user;
 \c fastapi_dev
 GRANT ALL ON SCHEMA public TO dev_user;
@@ -251,7 +229,7 @@ exit
 1. 修改 `.env`：
 
 ```env
-DATABASE_URL=postgresql://dev_user:dev_password@localhost:5433/fastapi_dev
+DATABASE_URL=postgresql://dev_user:your_password@localhost:5433/fastapi_dev
 ```
 
 停止 PostgreSQL：
@@ -264,14 +242,12 @@ DATABASE_URL=postgresql://dev_user:dev_password@localhost:5433/fastapi_dev
 
 > ZIP 版本不會自動建立 Windows Service，因此每次使用前需要執行 `pg_ctl start`。若要讓 PostgreSQL 開機自動啟動，通常需要系統管理員協助建立服務。
 
-
-
 #### 建立開發用資料庫與使用者
 
 ```sql: add file .\psql\createdb.sql
 -- 用 psql 或 pgAdmin 執行
 CREATE DATABASE fastapi_dev;
-CREATE USER dev_user WITH PASSWORD 'dev_password';
+CREATE USER dev_user WITH PASSWORD 'your_password';
 GRANT ALL PRIVILEGES ON DATABASE fastapi_dev TO dev_user;
 
 \connect fastapi_dev
@@ -294,7 +270,7 @@ pip install "psycopg[binary]" python-dotenv
 `.env`（不要進版控，需加入 `.gitignore`）：
 
 ```
-DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/fastapi_dev
+DATABASE_URL=postgresql://dev_user:your_password@localhost:5432/fastapi_dev
 ```
 
 測試連線 `app/core/db_test.py`：
@@ -326,29 +302,21 @@ python .\app\core\db_test.py
 1. 用 `psql` 指令手動建立一個 `notes` table（欄位：`id`, `title`, `content`, `created_at`）；用 `INSERT` 手動塞3筆資料，再用 `SELECT` 查回來
 2. New REST api: /note/{id}
 
-
-
 ### 驗收標準
 
 - [x] Python 程式能成功連上 PostgreSQL
 - [x] 能說明為什麼密碼要放在 `.env` 而不是寫死在程式碼裡（對應你熟悉的環境變數管理概念）
 - [x] Test API and data format (了解Swagger用法，具備測試API能力)
 
+### 本週筆記（venv／pg_ctl／流程見 `ai.md` W02）
 
-
-### 心得
-
-- VScode Extension: SQLTools PostgreSQL/Cockroach Driver，方便VSCode可以執行SQL
-- psql: 另外建立db帳號 (postgres權限勿濫用)，須要給予public schema建表權限
-- AI coding會建立更清楚的program structures。E.g. routers (REST api path) -> repositories (get data SQL) -> schemas (response model)
+- 可用 VS Code SQLTools 跑 SQL；日常用開發帳號，勿濫用 `postgres` 超管。
+- 新建庫後記得對 `public` schema 授權建表。
+- 真實密碼只放本機 `.env`；本文件與 Git 只用佔位符。
 
 ---
 
-
-
 ## 資料庫流程指令集
-
-
 
 ### A. 啟動 / 停止 PostgreSQL（ZIP · 5433）
 
@@ -367,29 +335,24 @@ python .\app\core\db_test.py
 & "$env:USERPROFILE\pgsql\bin\pg_ctl.exe" -D "$env:USERPROFILE\pgsql-data" stop
 ```
 
-
-
 ### B. 用 psql 連線
 
 ```powershell
 cd $env:USERPROFILE\pgsql
 
+# 勿把真實密碼寫進文件或 Git；用 -W 互動輸入（或本機暫設 PGPASSWORD，用完清除）
 # 管理員（建帳號用）
-$env:PGPASSWORD = 'postgres'
-.\bin\psql.exe -h localhost -p 5433 -U postgres -d postgres
+.\bin\psql.exe -h localhost -p 5433 -U postgres -d postgres -W
 
 # 開發帳號（日常用）
-$env:PGPASSWORD = 'dev_password'
-.\bin\psql.exe -h localhost -p 5433 -U dev_user -d fastapi_dev
+.\bin\psql.exe -h localhost -p 5433 -U dev_user -d fastapi_dev -W
 ```
-
-
 
 ### C. 在 psql 裡（看到 `xxx=#` 或 `xxx=>`）
 
 ```sql
 -- 建開發帳號／庫（用 postgres 身分，已存在可略）
-CREATE USER dev_user WITH PASSWORD 'dev_password';
+CREATE USER dev_user WITH PASSWORD 'your_password';
 CREATE DATABASE fastapi_dev OWNER dev_user;
 \c fastapi_dev
 GRANT ALL ON SCHEMA public TO dev_user;
@@ -420,41 +383,39 @@ SELECT * FROM notes;
 \q
 ```
 
+### D. `.env`（本機自建，勿寫進本文件／Git）
 
+```env
+DATABASE_URL=postgresql://dev_user:your_password@localhost:5433/fastapi_dev
+```
 
-### D. `.env` : 連線資訊
-
-
+將 `your_password` 換成你自己的；確認 `.gitignore` 有 `.env`。
 
 ### E. Python 測連線（要在專案 + venv）
 
 ```powershell
-cd C:\Users\admin\code\fastapi-backend
+cd <你的專案路徑>\fastapi-backend
 .\venv\Scripts\Activate.ps1
 python .\app\core\db_test.py
 # 期望：連線成功: fastapi_dev
 ```
 
-
-
 ### F. 跑 API 測 note
 
 ```powershell
-cd C:\Users\admin\code\fastapi-backend
+cd <你的專案路徑>\fastapi-backend
 .\venv\Scripts\Activate.ps1
 .\run.bat
 ```
 
-瀏覽器：
+瀏覽器（本機；公開子路徑用 `/api/docs`，見 `ai.md` W03）：
 
 ```text
-http://127.0.0.1:7777/docs
-http://127.0.0.1:7777/api/note/1
+http://127.0.0.1:7777/api/docs
+http://127.0.0.1:7777/api/note/<存在的id>
 ```
 
 ---
-
-
 
 ## 最短心智圖
 
@@ -470,11 +431,7 @@ pg_ctl start
 
 ---
 
-
-
 ## W03：Run FastAPI as Web App and API
-
-
 
 ### 學習目標
 
@@ -497,315 +454,25 @@ app\main.py
   > 另開無痕測試就好了，why? 以後如何注意此問題
 - F12 > Network > Disable Cache
 
-
-
 ### 驗收標準
 
-- [ ] local IP可存取
-- [ ] 上課與TA設定 [https://demo.wke.csie.ncnu.edu.tw/](https://demo.wke.csie.ncnu.edu.tw/) 可存取
-- [ ] 盡量測試，列出問題討論
-
-
-
-### 心得
-
-
-
-## 3. 建立 API 路由群組
-
-```python
-api_router = APIRouter(prefix="/api")
-```
-
-這表示加入這個 router 的所有路由，都會自動加上 `/api`。
-
-例如：
-
-```python
-@api_router.get("/health")
-```
-
-實際網址會是：
-
-```text
-GET /api/health
-```
-
-這樣可以把網站和 API 分開：
-
-```text
-/          前端網站
-/api/...   後端 API
-```
-
-
-
-## 4. 找到前端資料夾
-
-```python
-public_directory = Path(__file__).resolve().parents[2] / "webui-lab"
-```
-
-目前檔案位置：
-
-```text
-C:\Users\admin\code\fastapi-backend\app\main.py
-```
-
-`parents[2]` 會回到：
-
-```text
-C:\Users\admin\code
-```
-
-再加上：
-
-```text
-webui-lab
-```
-
-最後找到：
-
-```text
-C:\Users\admin\code\webui-lab
-```
-
-也就是你的前端專案資料夾。
-
-## 5. 限制靜態檔案
-
-```python
-class HtmlCssOnlyStaticFiles(StaticFiles):
-```
-
-這是在擴充 FastAPI 的 `StaticFiles`。
-
-```python
-async def get_response(self, path: str, scope: dict) -> PlainTextResponse:
-    if path and not path.endswith((".html", ".css")):
-        return PlainTextResponse("Not Found", status_code=404)
-    return await super().get_response(path, scope)
-```
-
-意思是：
-
-- `.html`：允許
-- `.css`：允許
-- `.js`、`.json`、`.txt`：目前拒絕，回傳 `404`
-
-例如：
-
-```text
-/index.html → 200
-/style.css  → 200
-/app.js     → 404
-```
-
-這是配合老師要求的靜態檔案限制。
-
-## 6. 定義 Item 資料模型
-
-```python
-class Item(BaseModel):
-    name: str
-    price: float
-```
-
-這是 API 接收資料的格式：
-
-```json
-{
-  "name": "Keyboard",
-  "price": 99.5
-}
-```
-
-FastAPI 會自動驗證：
-
-- `name` 必須是字串
-- `price` 必須是數字
-- 缺少欄位會回傳 `422`
-
-
-
-## 7. 健康檢查 API
-
-```python
-@api_router.get("/health")
-def health_check() -> dict[str, str]:
-    return {"status": "ok"}
-```
-
-實際網址：
-
-```text
-GET /api/health
-```
-
-用途是確認服務是否正常執行。
-
-## 8. 版本 API
-
-```python
-@api_router.get("/version")
-def version_check() -> dict[str, str]:
-    return {"version": "0.1.0"}
-```
-
-實際網址：
-
-```text
-GET /api/version
-```
-
-回傳目前 API 版本。
-
-## 9. Item API
-
-```python
-@api_router.post("/items", response_model=Item)
-def create_item(item: Item) -> Item:
-    return item
-```
-
-實際網址：
-
-```text
-POST /api/items
-```
-
-這裡有兩個重要的 `Item`：
-
-```python
-item: Item
-```
-
-表示接收的 request body 必須符合 `Item` 格式。
-
-```python
-response_model=Item
-```
-
-表示回應也必須符合 `Item` 格式。
-
-目前這個 API 只會：
-
-```text
-接收資料 → 驗證資料 → 原樣回傳
-```
-
-還沒有寫入 PostgreSQL。
-
-## 10. 啟用 API 路由
-
-```python
-app.include_router(api_router)
-```
-
-這行把前面定義的 `/api/health`、`/api/version`、`/api/items` 加入主應用程式。
-
-如果沒有這行，雖然函式存在，網址仍然無法使用。
-
-## 11. 根網址回傳前端首頁
-
-```python
-@app.get("/", include_in_schema=False)
-def serve_index() -> FileResponse:
-    return FileResponse(public_directory / "index.html")
-```
-
-當使用者開啟：
-
-```text
-GET /
-```
-
-FastAPI 回傳：
-
-```text
-webui-lab/index.html
-```
-
-`include_in_schema=False` 表示不要把這個前端首頁顯示在 Swagger API 文件中。
-
-## 12. 掛載前端靜態檔案
-
-```python
-app.mount(
-    "/",
-    HtmlCssOnlyStaticFiles(directory=public_directory, html=True),
-    name="public",
-)
-```
-
-這會把 `webui-lab` 資料夾掛到網站根目錄：
-
-```text
-/              webui-lab/
-```
-
-所以：
-
-```text
-/                  → index.html
-/index.html        → webui-lab/index.html
-/style.css         → webui-lab/style.css
-```
-
-
-
-## 整體流程
-
-```text
-瀏覽器請求 /
-    ↓
-serve_index()
-    ↓
-webui-lab/index.html
-```
-
-```text
-瀏覽器請求 /api/health
-    ↓
-api_router
-    ↓
-health_check()
-    ↓
-{"status": "ok"}
-```
-
-```text
-瀏覽器請求 /api/items
-    ↓
-Pydantic 驗證 Item
-    ↓
-create_item()
-    ↓
-回傳 Item JSON
-```
-
-透過 IIS 時則是：
-
-```text
-公開網址
-https://demo.../s115321503/api/health
-        ↓
-IIS Rewrite
-        ↓
-http://你的IP:7777/api/health
-        ↓
-FastAPI main.py
-```
-
-最重要的觀念是：`main.py` 是一個「路由總管」，把前端檔案請求和後端 API 請求分流到不同處理方式。
+- [x] local IP可存取
+- [x] 上課與TA設定 [https://demo.wke.csie.ncnu.edu.tw/](https://demo.wke.csie.ncnu.edu.tw/) 可存取
+- [x] 盡量測試，列出問題討論
+
+### 本週筆記（IIS／路由／Swagger／尾斜線／快取見 `ai.md` W03）
+
+依 `main.py` 組裝順序，只記文件沒寫過的實作細節：
+
+1. `**public_directory**`：`Path(__file__).resolve().parents[2] / "webui-lab"`——從 `app/main.py` 往上兩層到專案上層，再進前端資料夾。
+2. `**Item`（Pydantic）**：自動驗證 body；缺欄／型別錯 → `422`。目前 `POST /api/items` 只驗證後原樣回傳，**尚未寫入 DB**。
+3. `**app.include_router(api_router)**`：沒這行，上面的 `/api/*` 函式不會掛上網址。
+4. **先 `serve_index`（`/`）再 `mount("/", …)`**：較精確的路由先註冊；剩下的 html／css 才交給靜態掛載。
+5. **靜態限制**：只允許 `.html`／`.css`（老師要求）；其它副檔名回 `404`。
 
 ---
 
-
-
 ## W4：CRUD API 完整實作
-
-
 
 ### 學習目標
 
@@ -896,15 +563,11 @@ from app.api import notes
 app.include_router(notes.router)
 ```
 
-
-
 ### 本週練習
 
 1. 為 `User` 也做一組完整 CRUD
 2. 思考並實作：`DELETE` 時如果 note 不存在，回傳的狀態碼與錯誤訊息是否符合 REST 慣例
 3. 用 `/docs` 的 Swagger UI 手動測試所有端點
-
-
 
 ### 驗收標準
 
@@ -913,11 +576,7 @@ app.include_router(notes.router)
 
 ---
 
-
-
 ## W5：關聯式設計（一對多、多對多）
-
-
 
 ### 學習目標
 
@@ -986,15 +645,11 @@ from sqlalchemy.orm import joinedload
 notes = db.query(Note).options(joinedload(Note.owner)).all()
 ```
 
-
-
 ### 本週練習
 
 1. 完成 Tag 的 CRUD，並實作「一則 note 新增多個 tag」的端點
 2. 用 SQLAlchemy 的 echo 模式（`create_engine(url, echo=True)`）觀察 N+1 實際印出的 SQL 語句數量
 3. 改用 `joinedload` 後，再次觀察 SQL 語句數量差異
-
-
 
 ### 驗收標準
 
@@ -1003,11 +658,7 @@ notes = db.query(Note).options(joinedload(Note.owner)).all()
 
 ---
 
-
-
 ## W6：身份驗證（JWT / OAuth2）
-
-
 
 ### 學習目標
 
@@ -1087,15 +738,11 @@ def my_notes(current_user: User = Depends(get_current_user), db: Session = Depen
     return db.query(Note).filter(Note.owner_id == current_user.id).all()
 ```
 
-
-
 ### 本週練習
 
 1. 實作 `/register` 端點（存密碼前務必用 `hash_password`）
 2. 修改所有 note CRUD 端點，加上 `get_current_user`，確保使用者只能操作自己的 note
 3. 思考：JWT 存在前端的哪裡比較安全？（localStorage vs httpOnly cookie）並寫下你的判斷理由
-
-
 
 ### 驗收標準
 
@@ -1104,11 +751,7 @@ def my_notes(current_user: User = Depends(get_current_user), db: Session = Depen
 
 ---
 
-
-
 ## W7：測試（pytest）
-
-
 
 ### 學習目標
 
@@ -1130,7 +773,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.core.database import Base, get_db
 
-TEST_DATABASE_URL = "postgresql://dev_user:dev_password@localhost:5432/fastapi_test"
+TEST_DATABASE_URL = "postgresql://dev_user:your_password@localhost:5432/fastapi_test"
 engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(bind=engine)
 
@@ -1163,15 +806,11 @@ def test_get_nonexistent_note(client):
     assert response.status_code == 404
 ```
 
-
-
 ### 本週練習
 
 1. 為 `/register` 與 `/login` 寫測試（含密碼錯誤情境）
 2. 為「使用者不能刪除別人的 note」這個規則寫一個測試
 3. 執行 `pytest -v`，確保全部通過
-
-
 
 ### 驗收標準
 
@@ -1180,11 +819,7 @@ def test_get_nonexistent_note(client):
 
 ---
 
-
-
 ## W8：非同步與連線池
-
-
 
 ### 學習目標
 
@@ -1205,7 +840,7 @@ pip install asyncpg "sqlalchemy[asyncio]"
 ```python
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-ASYNC_DATABASE_URL = "postgresql+asyncpg://dev_user:dev_password@localhost:5432/fastapi_dev"
+ASYNC_DATABASE_URL = "postgresql+asyncpg://dev_user:your_password@localhost:5432/fastapi_dev"
 engine = create_async_engine(ASYNC_DATABASE_URL, pool_size=10, max_overflow=20)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -1225,15 +860,11 @@ async def list_notes(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 ```
 
-
-
 ### 本週練習
 
 1. 把 W4-W6 的所有端點改寫為 async 版本
 2. 用 `pool_size` 與 `max_overflow` 參數，理解連線池的上限概念（對應你熟悉的資料庫連線池概念，例如 HikariCP）
 3. 寫一個簡單的負載測試（可用 `locust` 或手動並發請求），比較 sync 與 async 版本在高並發下的差異
-
-
 
 ### 驗收標準
 
@@ -1242,11 +873,7 @@ async def list_notes(db: AsyncSession = Depends(get_db)):
 
 ---
 
-
-
 ## W9：進階查詢：分頁、篩選、搜尋
-
-
 
 ### 學習目標
 
@@ -1275,15 +902,11 @@ async def list_notes(
     return result.scalars().all()
 ```
 
-
-
 ### 本週練習
 
 1. 加上排序參數（`sort_by`, `order`），允許依 `created_at` 或 `title` 排序
 2. 回傳分頁時，附上總筆數（`X-Total-Count` header 或包在 response body）
 3. 針對 `search` 欄位思考：`ilike` 在大資料量時的效能問題，並研究 PostgreSQL 全文搜尋（`tsvector`）作為進階選項
-
-
 
 ### 驗收標準
 
@@ -1292,11 +915,7 @@ async def list_notes(
 
 ---
 
-
-
 ## W10：錯誤處理、Logging、Middleware
-
-
 
 ### 學習目標
 
@@ -1344,15 +963,11 @@ async def log_requests(request: Request, call_next):
     return response
 ```
 
-
-
 ### 本週練習
 
 1. 把所有 `HTTPException` 統一改成自訂的 `AppException`，確保錯誤格式一致
 2. 設定 log 同時輸出到 console 與檔案，並區分 `INFO` / `ERROR` 等級
 3. 加一個全域的「未預期例外」處理器，避免 500 錯誤時把 stack trace 洩漏給前端
-
-
 
 ### 驗收標準
 
@@ -1361,11 +976,7 @@ async def log_requests(request: Request, call_next):
 
 ---
 
-
-
 ## W11：Docker 化
-
-
 
 ### 學習目標
 
@@ -1392,7 +1003,7 @@ services:
     image: postgres:16
     environment:
       POSTGRES_USER: dev_user
-      POSTGRES_PASSWORD: dev_password
+      POSTGRES_PASSWORD: your_password
       POSTGRES_DB: fastapi_dev
     ports:
       - "5432:5432"
@@ -1404,7 +1015,7 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: postgresql://dev_user:dev_password@db:5432/fastapi_dev
+      DATABASE_URL: postgresql://dev_user:your_password@db:5432/fastapi_dev
     ports:
       - "8000:8888"
 
@@ -1418,15 +1029,11 @@ volumes:
 docker compose up --build
 ```
 
-
-
 ### 本週練習
 
 1. 確認容器重啟後資料還在（驗證 volume 是否正確掛載）
 2. 加入 migration 自動執行的步驟（在 `api` 容器啟動時先跑 `alembic upgrade head`）
 3. 研究並寫下：production 環境下，為什麼不建議用 `--reload`，也不建議把資料庫密碼寫死在 `docker-compose.yml`
-
-
 
 ### 驗收標準
 
@@ -1435,11 +1042,7 @@ docker compose up --build
 
 ---
 
-
-
 ## W12：部署與整合專題
-
-
 
 ### 學習目標
 
@@ -1455,8 +1058,6 @@ docker compose up --build
   - 或在自己的雲端主機用 docker-compose 跑起來
 5. **架構回顧**：以你的 software architect 背景，寫一頁簡短的技術筆記，評估這個專案目前的**架構限制**（例如：沒有 rate limiting、沒有 cache layer、沒有背景任務佇列），並列出如果要正式上線，你會優先補強哪三項
 
-
-
 ### 驗收標準
 
 - [ ] 專案可以從乾淨環境（新 clone 下來）依照 README 步驟成功啟動
@@ -1464,8 +1065,6 @@ docker compose up --build
 - [ ] 完成架構限制評估筆記
 
 ---
-
-
 
 ## 學習方式提醒
 

@@ -29,7 +29,7 @@ FastAPI 通常只監聽：
 本機開發服務，透過學校 IIS 反向代理公開成網址。範例使用：
 
  ```text
- 公開網址：https://demo.wke.csie.ncnu.edu.tw/s115321503/
+ 公開網址：https://demo.wke.csie.ncnu.edu.tw/s學號/
  本機服務：http://10.22.22.170:7777/
  ```
 
@@ -39,7 +39,7 @@ FastAPI 通常只監聽：
  瀏覽器
      |
      v
- https://demo.wke.csie.ncnu.edu.tw/s115321503/
+ https://demo.wke.csie.ncnu.edu.tw/s學號/
      |
      | IIS URL Rewrite + ARR
      v
@@ -60,7 +60,7 @@ FastAPI 通常只監聽：
  FastAPI 應監聽所有網路介面：
 
  ```powershell
- cd C:\Users\admin\code\fastapi-backend
+ cd <專案路徑>\fastapi-backend
  .\run.bat
  ```
 
@@ -176,12 +176,12 @@ FastAPI 通常只監聽：
  在 IIS 站台下建立自己的虛擬目錄，例如：
 
  ```text
- Alias：s115321503
+ Alias：s學號
  ```
 
  Alias 不要填前面的 `/`。它決定公開 URL 的路徑，但不是本機資料夾，也不是 FastAPI port。
 
- Physical path 是 IIS 伺服器上的資料夾，必須由管理者提供或確認權限；它不是你自己電腦上的 `C:\Users\admin\code\fastapi-backend`。
+ Physical path 是 IIS 伺服器上的資料夾，必須由管理者提供或確認權限；它不是你自己電腦上的 `<專案路徑>\fastapi-backend`。
 
  ### Rewrite 規則要理解的欄位
 
@@ -202,7 +202,7 @@ FastAPI 通常只監聽：
  `Rewrite` 是 IIS 內部轉送，瀏覽器網址仍然保持公開網址。公開請求：
 
  ```text
- /s115321503/api/health
+ /s學號/api/health
  ```
 
  應轉成後端請求：
@@ -211,22 +211,22 @@ FastAPI 通常只監聽：
  /api/health
  ```
 
- 如果規則放在虛擬目錄內，IIS 可能已先去掉 `s115321503` 前綴；如果放在站台根目錄，匹配字串可能仍包含學號前綴。設定前要確認 `web.config` 的位置，不能只看正規表示式表面上是否相似。
+ 如果規則放在虛擬目錄內，IIS 可能已先去掉 `s學號` 前綴；如果放在站台根目錄，匹配字串可能仍包含學號前綴。設定前要確認 `web.config` 的位置，不能只看正規表示式表面上是否相似。
 
  ## 6. 公開網址驗收
 
  假設公開網址是：
 
  ```text
- https://demo.wke.csie.ncnu.edu.tw/s115321503
+ https://demo.wke.csie.ncnu.edu.tw/s學號
  ```
 
  依序測試：
 
  ```powershell
- curl.exe -i https://demo.wke.csie.ncnu.edu.tw/s115321503/
- curl.exe -i https://demo.wke.csie.ncnu.edu.tw/s115321503/api/health
- curl.exe -i https://demo.wke.csie.ncnu.edu.tw/s115321503/api/version
+ curl.exe -i https://demo.wke.csie.ncnu.edu.tw/s學號/
+ curl.exe -i https://demo.wke.csie.ncnu.edu.tw/s學號/api/health
+ curl.exe -i https://demo.wke.csie.ncnu.edu.tw/s學號/api/version
  ```
 
  預期：
@@ -241,7 +241,7 @@ FastAPI 通常只監聽：
  curl.exe -i -X POST `
      -H "Content-Type: application/json" `
      -d '{"name":"Keyboard","price":99.5}' `
-     https://demo.wke.csie.ncnu.edu.tw/s115321503/api/items
+     https://demo.wke.csie.ncnu.edu.tw/s學號/api/items
  ```
 
  正確資料應回傳 `200` 和 Item JSON。故意省略 `price` 或傳入無法轉成數字的值，應回傳 `422`；這是 Pydantic 驗證正常運作，不是 IIS 失敗。
@@ -298,7 +298,7 @@ FastAPI 通常只監聽：
 
  ```text
  學號：115321503
- Virtual Directory：s115321503
+ Virtual Directory：s學號
  目前校內 IP：10.22.22.170
  服務 Port：7777
  首頁：http://10.22.22.170:7777/
@@ -386,13 +386,13 @@ http://10.21.26.181:7777/api/docs
 ### 你原本的規則
 
 ```xml
-<match url="^((.*)/s115321503/?)?(.*)" />
+<match url="^((.*)/s學號/?)?(.*)" />
 ```
 
 有三組括號：
 
 ```text
-^((.*)/s115321503/?)?(.*)
+^((.*)/s學號/?)?(.*)
   │    │              │
  R:1  R:2            R:3
 ```
@@ -408,13 +408,13 @@ http://10.21.26.181:7777/api/docs
 例如：
 
 ```text
-s115321503/api/docs
+s學號/api/docs
 ```
 
 大致會得到：
 
 ```text
-R:1 = s115321503/
+R:1 = s學號/
 R:2 = ...
 R:3 = api/docs
 ```
@@ -467,7 +467,7 @@ logRewrittenUrl="true"
 例如原始請求：
 
 ```text
-/s115321503/api/docs
+/s學號/api/docs
 ```
 
 Rewrite 後：
