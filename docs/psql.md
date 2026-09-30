@@ -23,7 +23,11 @@
 
 ---
 
+
+
 ## W1：FastAPI 專案架構與基礎 API
+
+
 
 ### 學習目標
 
@@ -120,6 +124,8 @@ git merge origin/main --allow-unrelated-histories
 git push -u origin main
 ```
 
+
+
 ### 驗收標準
 
 - [x] `/docs` 能正常開啟並看到自訂端點
@@ -127,6 +133,8 @@ git push -u origin main
 - [x] 了解建立根目錄的 .gitignore，涵蓋：Python 虛擬環境與快取、pytest、coverage、mypy、ruff 產物、.env 設定檔、FastAPI/Uvicorn log、PostgreSQL 本地資料與備份、VS Code、IDE 與作業系統檔案
 - [x] 學會 `.gitignore`：`!` 取消忽略，例如 !.env.example 會保留範例設定檔。
 - [x] add .env.example，並commit and push確認出現自github repo。
+
+
 
 ### 本週筆記
 
@@ -136,7 +144,11 @@ git push -u origin main
 
 ---
 
+
+
 ## W2：PostgreSQL 安裝與連線
+
+
 
 ### 學習目標
 
@@ -242,6 +254,8 @@ DATABASE_URL=postgresql://dev_user:your_password@localhost:5433/fastapi_dev
 
 > ZIP 版本不會自動建立 Windows Service，因此每次使用前需要執行 `pg_ctl start`。若要讓 PostgreSQL 開機自動啟動，通常需要系統管理員協助建立服務。
 
+
+
 #### 建立開發用資料庫與使用者
 
 ```sql: add file .\psql\createdb.sql
@@ -302,11 +316,15 @@ python .\app\core\db_test.py
 1. 用 `psql` 指令手動建立一個 `notes` table（欄位：`id`, `title`, `content`, `created_at`）；用 `INSERT` 手動塞3筆資料，再用 `SELECT` 查回來
 2. New REST api: /note/{id}
 
+
+
 ### 驗收標準
 
 - [x] Python 程式能成功連上 PostgreSQL
 - [x] 能說明為什麼密碼要放在 `.env` 而不是寫死在程式碼裡（對應你熟悉的環境變數管理概念）
 - [x] Test API and data format (了解Swagger用法，具備測試API能力)
+
+
 
 ### 本週筆記（venv／pg_ctl／流程見 `ai.md` W02）
 
@@ -316,7 +334,11 @@ python .\app\core\db_test.py
 
 ---
 
+
+
 ## 資料庫流程指令集
+
+
 
 ### A. 啟動 / 停止 PostgreSQL（ZIP · 5433）
 
@@ -335,6 +357,8 @@ python .\app\core\db_test.py
 & "$env:USERPROFILE\pgsql\bin\pg_ctl.exe" -D "$env:USERPROFILE\pgsql-data" stop
 ```
 
+
+
 ### B. 用 psql 連線
 
 ```powershell
@@ -347,6 +371,8 @@ cd $env:USERPROFILE\pgsql
 # 開發帳號（日常用）
 .\bin\psql.exe -h localhost -p 5433 -U dev_user -d fastapi_dev -W
 ```
+
+
 
 ### C. 在 psql 裡（看到 `xxx=#` 或 `xxx=>`）
 
@@ -383,6 +409,8 @@ SELECT * FROM notes;
 \q
 ```
 
+
+
 ### D. `.env`（本機自建，勿寫進本文件／Git）
 
 ```env
@@ -399,6 +427,8 @@ cd <你的專案路徑>\fastapi-backend
 python .\app\core\db_test.py
 # 期望：連線成功: fastapi_dev
 ```
+
+
 
 ### F. 跑 API 測 note
 
@@ -417,6 +447,8 @@ http://127.0.0.1:7777/api/note/<存在的id>
 
 ---
 
+
+
 ## 最短心智圖
 
 ```text
@@ -431,7 +463,11 @@ pg_ctl start
 
 ---
 
+
+
 ## W03：Run FastAPI as Web App and API
+
+
 
 ### 學習目標
 
@@ -454,11 +490,15 @@ app\main.py
   > 另開無痕測試就好了，why? 以後如何注意此問題
 - F12 > Network > Disable Cache
 
+
+
 ### 驗收標準
 
 - [x] local IP可存取
 - [x] 上課與TA設定 [https://demo.wke.csie.ncnu.edu.tw/](https://demo.wke.csie.ncnu.edu.tw/) 可存取
 - [x] 盡量測試，列出問題討論
+
+
 
 ### 本週筆記（IIS／路由／Swagger／尾斜線／快取見 `ai.md` W03）
 
@@ -467,92 +507,233 @@ app\main.py
 1. `**public_directory**`：`Path(__file__).resolve().parents[2] / "webui-lab"`——從 `app/main.py` 往上兩層到專案上層，再進前端資料夾。
 2. `**Item`（Pydantic）**：自動驗證 body；缺欄／型別錯 → `422`。目前 `POST /api/items` 只驗證後原樣回傳，**尚未寫入 DB**。
 3. `**app.include_router(api_router)**`：沒這行，上面的 `/api/*` 函式不會掛上網址。
-4. **先 `serve_index`（`/`）再 `mount("/", …)`**：較精確的路由先註冊；剩下的 html／css 才交給靜態掛載。
+4. **先** `serve_index`**（**`/`**）再** `mount("/", …)`：較精確的路由先註冊；剩下的 html／css 才交給靜態掛載。
 5. **靜態限制**：只允許 `.html`／`.css`（老師要求）；其它副檔名回 `404`。
 
 ---
 
-## W4：CRUD API 完整實作
+
+
+## W04：CRUD API 完整實作
+
+
+
+### RESTful API
+
+RESTful API 是一種以「資源（resource）」為中心設計 HTTP API 的方式。每一種資源都有固定的 URL，例如 `/notes` 代表筆記集合，`/notes/{id}` 代表某一筆筆記；用不同的 HTTP method 表達對資源的操作，而不是為每個動作建立不同的動詞型 URL。
+
+CRUD 分別代表 **Create（新增）**、**Read（查詢）**、**Update（更新）**、**Delete（刪除）**。以下以 `notes` 資源為例：
+
+
+| CRUD     | HTTP method | 範例路徑          | 使用時機                | 請求／回應範例                                                                     |
+| -------- | ----------- | ------------- | ------------------- | --------------------------------------------------------------------------- |
+| Create   | `POST`      | `/notes`      | 建立一筆新資源，由伺服器產生 `id` | 請求：`{"title": "學習 REST", "content": "理解 CRUD"}` 回應：`201 Created` 與建立後的 note |
+| Read（列表） | `GET`       | `/notes`      | 取得資源集合，可搭配分頁、篩選或搜尋  | 回應：`200 OK` 與 notes 陣列                                                      |
+| Read（單筆） | `GET`       | `/notes/{id}` | 取得指定 `id` 的資源       | 回應：`200 OK` 與單筆 note；不存在時回傳 `404 Not Found`                                 |
+| Update   | `PUT`       | `/notes/{id}` | 以完整資料取代指定資源         | 請求：`{"title": "更新標題", "content": "更新內容"}` 回應：`200 OK` 與更新後的 note            |
+| Delete   | `DELETE`    | `/notes/{id}` | 刪除指定資源              | 回應：`204 No Content`；不存在時回傳 `404 Not Found`                                  |
+
+
+設計 API 時，路徑通常使用名詞而不是動詞，例如使用 `POST /notes`，而不是 `/createNote`。同一個 HTTP method 與 URL 應具有一致且可預期的語意，讓前端、其他服務與 API 文件都容易理解與使用。
 
 ### 學習目標
 
-串接 W1 的 API 層與 W3 的資料層，完成一組完整 RESTful CRUD。
+串接API與資料庫，完成一組完整 RESTful CRUD。
 
 ### 為什麼這樣安排
 
 這是第一個「垂直切片」（vertical slice）——從 HTTP 請求到資料庫的完整路徑打通，之後每一週都是在這個路徑上疊加功能，而不是零散學習。
 
-### 操作步驟
+### AI coding
+
+> 針對/api/note 加入REST CRUD功能 (需對應慣用HTTP Method)
+
+- 仔細觀察修改的程式碼，另開瀏覽器詢問AI以求理解
+- 撰寫學習心得
+
+
+
+### 人工操作步驟
+
+
+
+#### 分層設計理念：routers → schemas → repositories → core
+
+將 API 拆成不同層次，是為了讓每個檔案只負責一種工作，降低修改時彼此影響的範圍。一次請求大致會依照以下流程處理：
+
+1. **Routers（路由層）**：決定 API 的 URL、HTTP method 與回應狀態，接收請求後呼叫下一層，不直接撰寫大量 SQL 或資料庫連線細節。
+2. **Schemas（資料格式層）**：使用 Pydantic 定義請求與回應格式，負責型別驗證、欄位限制，以及避免把資料庫內部欄位直接暴露給前端。
+3. **Repositories（資料存取層）**：集中處理 SQL 與資料庫 CRUD，讓 Router 不需要知道資料表查詢的細節。
+4. **Core（共用基礎設施層）**：提供資料庫連線、設定、驗證或其他全域共用功能；例如 `core/db.py` 管理 PostgreSQL 連線。
+
+因此，實際的責任關係可以理解為：
+
+```text
+HTTP request
+    → routers/notes.py       路由與流程控制
+    → schemas/notes.py        請求資料驗證
+    → repositories/notes.py  SQL 與資料存取
+    → core/db.py              PostgreSQL 連線
+    → HTTP response
+```
+
+相關檔案的使用方式如下：
+
+
+| 元件                     | 目前專案檔案                      | 主要用途                                   |
+| ---------------------- | --------------------------- | -------------------------------------- |
+| Router                 | `app/routers/notes.py`      | 定義 `/api/notes` 等端點，處理 HTTP 請求與回應      |
+| Schema                 | `app/schemas/notes.py`      | 定義 `NoteCreate`、`NoteResponse` 等輸入輸出模型 |
+| Repository             | `app/repositories/notes.py` | 封裝 notes 的 SQL 查詢、新增、更新與刪除             |
+| Core                   | `app/core/db.py`            | 建立與管理 PostgreSQL 資料庫連線                 |
+| Core                   | `app/core/static_files.py`  | 集中處理前端靜態檔案的提供方式                        |
+| Application entrypoint | `app/main.py`               | 建立 FastAPI app、註冊 Router 與設定整體服務       |
+
+
+這種分層方式的重點不是檔案越多越好，而是讓變更容易定位：API 路徑改動主要看 Router，資料格式改動看 Schema，SQL 改動看 Repository，資料庫連線設定則集中在 Core。
+
+#### ORM 技術概念
+
+ORM（Object-Relational Mapping，物件關聯式對映）是把 Python 物件與關聯式資料庫的資料表對應起來的技術。開發者可以操作 `Note` 這類 Python model，ORM 再將操作轉換成 PostgreSQL 能理解的 SQL。
+
+簡單對照如下：
+
+
+| ORM 概念           | Python / SQLAlchemy 範例       | 資料庫概念                  |
+| ---------------- | ---------------------------- | ---------------------- |
+| Model class      | `class Note`                 | `notes` 資料表            |
+| Object attribute | `note.title`                 | `title` 欄位             |
+| Object instance  | `note = Note(...)`           | 一筆資料（row）              |
+| Query            | `db.query(Note).filter(...)` | `SELECT ... WHERE ...` |
+| `db.add()`       | 將物件加入 Session                | 準備新增一筆資料               |
+| `db.commit()`    | 提交 Session 的變更               | 真正寫入資料庫                |
+
+
+例如，以下 ORM 查詢：
+
+```python
+note = db.query(Note).filter(Note.id == note_id).first()
+```
+
+概念上相當於：
+
+```sql
+SELECT * FROM notes WHERE id = :note_id LIMIT 1;
+```
+
+其中 `db` 通常是 SQLAlchemy 的 `Session`。Session 可以理解成一次資料庫操作的工作範圍，負責追蹤物件變更、送出查詢，以及透過 `commit()` 確認交易。若發生錯誤，也可以使用 `rollback()` 撤銷尚未提交的變更。
+
+使用 ORM 的好處是可以用 Python model 與型別來表達資料操作，減少手寫 SQL 的數量，並集中處理交易與資料庫連線；但仍然需要理解 SQL，因為 ORM 最後仍會產生 SQL，複雜查詢也可能需要直接使用 SQLAlchemy 的查詢語法。
+
+本節為了讓 CRUD 流程集中，先在 Router 中直接示範 ORM 操作。實際專案可將 `db.query()`、`db.add()` 等資料庫操作移到 `app/repositories/notes.py`，讓 Router 只負責接收請求、呼叫 Repository 與回傳結果。
 
 `app/schemas/note.py`（Pydantic schema，區分「API 輸入輸出」與「資料庫 model」是重要慣例）：
 
 ```python
+# Schema 只描述 API 收到與回傳的資料格式，不負責執行 SQL。
+# import 是匯入其他套件或模組，讓目前檔案可以使用其中的類別與函式。
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
+# POST /notes 使用的請求格式；content 可省略。
+# class 用來定義一個可重複使用的資料結構或物件類別。
 class NoteCreate(BaseModel):
+    # 冒號後的 str 是型別註記，表示 title 預期是一段文字。
     title: str
+    # Optional[str] 表示可以是文字或 None；= None 表示預設值是 None。
     content: Optional[str] = None
 
+# API 回應格式；不直接暴露資料庫 model 給前端。
 class NoteResponse(BaseModel):
+    # Pydantic 會依照這些型別註記檢查與轉換資料。
     id: int
     title: str
     content: Optional[str]
     created_at: datetime
 
+    # 允許 Pydantic 從 ORM model 的屬性建立回應資料。
+    # 內嵌 class Config 是設定這個 Pydantic model 行為的舊版寫法。
     class Config:
+        # ORM 物件像 note.title；一般字典則像 {"title": "學習 REST"}。
+        # True 允許 Pydantic 讀取 ORM 物件的屬性，轉成 NoteResponse。
+        # 若沒有這項設定，通常只能從字典鍵值建立，例如 NoteResponse(**data)。
         from_attributes = True
 ```
 
 `app/api/notes.py`：
 
 ```python
+# Router 負責 HTTP 路由與流程控制；資料庫細節可再委派給 repository。
+# APIRouter 是 FastAPI 用來集中管理一組相關 API 路由的類別。
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.note import Note
 from app.schemas.note import NoteCreate, NoteResponse
 
+# 同一組 notes 資源共用路徑前綴與 OpenAPI 分類。
+# 關鍵字參數使用 name=value，讓設定的意義比位置順序更清楚。
 router = APIRouter(prefix="/notes", tags=["notes"])
 
+# Create：先由 NoteCreate 驗證請求，再建立資料庫 model。
+# @ 是 decorator 語法：把函式註冊成指定 HTTP method 與路徑的 API endpoint。
+# response_model 會驗證並限制回傳給前端的欄位格式。
 @router.post("/", response_model=NoteResponse)
+# note: NoteCreate 是請求 body，db 由 FastAPI 依賴注入，不需手動建立連線。
 def create_note(note: NoteCreate, db: Session = Depends(get_db)):
+    # ** 會把字典的 key/value 展開成函式或類別建構子的關鍵字參數。
     db_note = Note(**note.model_dump())
+    # model_dump() 將 Pydantic model 轉成一般 Python 字典。
     db.add(db_note)
+    # add、commit、refresh 是 ORM 常見的新增、提交、重新讀取資料流程。
     db.commit()
     db.refresh(db_note)
     return db_note
 
+# Read：回傳所有 notes，response_model 會統一輸出格式。
+# list[NoteResponse] 表示回應是一個由 NoteResponse 組成的列表。
 @router.get("/", response_model=list[NoteResponse])
+# Depends(get_db) 表示呼叫 endpoint 時，由 FastAPI 執行 get_db 並傳入結果。
 def list_notes(db: Session = Depends(get_db)):
+    # .all() 將查詢結果全部取回；資料量大時應搭配分頁。
     return db.query(Note).all()
 
+# Read：依照 note_id 查詢單筆資源。
 @router.get("/{note_id}", response_model=NoteResponse)
 def get_note(note_id: int, db: Session = Depends(get_db)):
+    # .filter() 加入查詢條件，== 是建立 SQL 條件，不是立即比較 Python 值。
     note = db.query(Note).filter(Note.id == note_id).first()
+    # if not 可檢查查詢結果是否為 None 或其他「沒有資料」的狀態。
     if not note:
+        # HTTPException 會讓 FastAPI 回傳指定的 HTTP 錯誤狀態與訊息。
         raise HTTPException(status_code=404, detail="Note not found")
     return note
 
+# Update：以 NoteCreate 的完整資料更新指定資源。
 @router.put("/{note_id}", response_model=NoteResponse)
 def update_note(note_id: int, note_data: NoteCreate, db: Session = Depends(get_db)):
     note = db.query(Note).filter(Note.id == note_id).first()
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
+    # for 逐一處理字典內容；key 是欄位名稱，value 是要寫入的新值。
     for key, value in note_data.model_dump().items():
+        # setattr(obj, name, value) 依欄位名稱動態設定物件屬性。
         setattr(note, key, value)
     db.commit()
     db.refresh(note)
     return note
 
+# Delete：找不到資源時回傳 404，避免讓呼叫端誤以為刪除成功。
 @router.delete("/{note_id}")
 def delete_note(note_id: int, db: Session = Depends(get_db)):
     note = db.query(Note).filter(Note.id == note_id).first()
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
+    # delete 標記 ORM 物件待刪除，commit 後才會真正寫入資料庫。
     db.delete(note)
     db.commit()
+    # return 的字典會被 FastAPI 自動序列化成 JSON 回應。
     return {"detail": "deleted"}
 ```
 
@@ -563,20 +744,38 @@ from app.api import notes
 app.include_router(notes.router)
 ```
 
+
+
 ### 本週練習
 
-1. 為 `User` 也做一組完整 CRUD
+1. 為 `User` 或個人專案會用到的資料表，也做一組完整 CRUD
 2. 思考並實作：`DELETE` 時如果 note 不存在，回傳的狀態碼與錯誤訊息是否符合 REST 慣例
 3. 用 `/docs` 的 Swagger UI 手動測試所有端點
 
+
+
 ### 驗收標準
 
-- [ ] 五個 CRUD 端點全部正常運作
-- [ ] 錯誤情境（找不到資源）回傳正確的 HTTP 狀態碼
+- [x] 五個 CRUD 端點全部正常運作
+- [x] 錯誤情境（找不到資源）回傳正確的 HTTP 狀態碼
+
+
+
+### 學習心得
+
+- 路徑用名詞，是資源名稱、動作用 HTTP 方法，上傳一個檔案也是用 POST。。
+- 找不到回 404，新增 201，DELETE 成功 204，PUT更新成功也是 200，id 不存在是 404，body 少 title 是 422。
+- 上課講 : 402 PAYMENT IS REQUIREMENT。
+- 職責分成 router、schema、repository、`core/db.py`，細節見 `docs/architecture.md`。
+- 這週沿用 `psycopg`，沒用文件後半的 SQLAlchemy；測 notes 前要先啟動 5433 上的 PostgreSQL，否則 Swagger 會一直轉。
 
 ---
 
+
+
 ## W5：關聯式設計（一對多、多對多）
+
+
 
 ### 學習目標
 
@@ -645,11 +844,15 @@ from sqlalchemy.orm import joinedload
 notes = db.query(Note).options(joinedload(Note.owner)).all()
 ```
 
+
+
 ### 本週練習
 
 1. 完成 Tag 的 CRUD，並實作「一則 note 新增多個 tag」的端點
 2. 用 SQLAlchemy 的 echo 模式（`create_engine(url, echo=True)`）觀察 N+1 實際印出的 SQL 語句數量
 3. 改用 `joinedload` 後，再次觀察 SQL 語句數量差異
+
+
 
 ### 驗收標準
 
@@ -658,7 +861,11 @@ notes = db.query(Note).options(joinedload(Note.owner)).all()
 
 ---
 
+
+
 ## W6：身份驗證（JWT / OAuth2）
+
+
 
 ### 學習目標
 
@@ -738,11 +945,15 @@ def my_notes(current_user: User = Depends(get_current_user), db: Session = Depen
     return db.query(Note).filter(Note.owner_id == current_user.id).all()
 ```
 
+
+
 ### 本週練習
 
 1. 實作 `/register` 端點（存密碼前務必用 `hash_password`）
 2. 修改所有 note CRUD 端點，加上 `get_current_user`，確保使用者只能操作自己的 note
 3. 思考：JWT 存在前端的哪裡比較安全？（localStorage vs httpOnly cookie）並寫下你的判斷理由
+
+
 
 ### 驗收標準
 
@@ -751,7 +962,11 @@ def my_notes(current_user: User = Depends(get_current_user), db: Session = Depen
 
 ---
 
+
+
 ## W7：測試（pytest）
+
+
 
 ### 學習目標
 
@@ -806,11 +1021,15 @@ def test_get_nonexistent_note(client):
     assert response.status_code == 404
 ```
 
+
+
 ### 本週練習
 
 1. 為 `/register` 與 `/login` 寫測試（含密碼錯誤情境）
 2. 為「使用者不能刪除別人的 note」這個規則寫一個測試
 3. 執行 `pytest -v`，確保全部通過
+
+
 
 ### 驗收標準
 
@@ -819,7 +1038,11 @@ def test_get_nonexistent_note(client):
 
 ---
 
+
+
 ## W8：非同步與連線池
+
+
 
 ### 學習目標
 
@@ -860,11 +1083,15 @@ async def list_notes(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 ```
 
+
+
 ### 本週練習
 
 1. 把 W4-W6 的所有端點改寫為 async 版本
 2. 用 `pool_size` 與 `max_overflow` 參數，理解連線池的上限概念（對應你熟悉的資料庫連線池概念，例如 HikariCP）
 3. 寫一個簡單的負載測試（可用 `locust` 或手動並發請求），比較 sync 與 async 版本在高並發下的差異
+
+
 
 ### 驗收標準
 
@@ -873,7 +1100,11 @@ async def list_notes(db: AsyncSession = Depends(get_db)):
 
 ---
 
+
+
 ## W9：進階查詢：分頁、篩選、搜尋
+
+
 
 ### 學習目標
 
@@ -902,11 +1133,15 @@ async def list_notes(
     return result.scalars().all()
 ```
 
+
+
 ### 本週練習
 
 1. 加上排序參數（`sort_by`, `order`），允許依 `created_at` 或 `title` 排序
 2. 回傳分頁時，附上總筆數（`X-Total-Count` header 或包在 response body）
 3. 針對 `search` 欄位思考：`ilike` 在大資料量時的效能問題，並研究 PostgreSQL 全文搜尋（`tsvector`）作為進階選項
+
+
 
 ### 驗收標準
 
@@ -915,7 +1150,11 @@ async def list_notes(
 
 ---
 
+
+
 ## W10：錯誤處理、Logging、Middleware
+
+
 
 ### 學習目標
 
@@ -963,11 +1202,15 @@ async def log_requests(request: Request, call_next):
     return response
 ```
 
+
+
 ### 本週練習
 
 1. 把所有 `HTTPException` 統一改成自訂的 `AppException`，確保錯誤格式一致
 2. 設定 log 同時輸出到 console 與檔案，並區分 `INFO` / `ERROR` 等級
 3. 加一個全域的「未預期例外」處理器，避免 500 錯誤時把 stack trace 洩漏給前端
+
+
 
 ### 驗收標準
 
@@ -976,7 +1219,11 @@ async def log_requests(request: Request, call_next):
 
 ---
 
+
+
 ## W11：Docker 化
+
+
 
 ### 學習目標
 
@@ -1029,11 +1276,15 @@ volumes:
 docker compose up --build
 ```
 
+
+
 ### 本週練習
 
 1. 確認容器重啟後資料還在（驗證 volume 是否正確掛載）
 2. 加入 migration 自動執行的步驟（在 `api` 容器啟動時先跑 `alembic upgrade head`）
 3. 研究並寫下：production 環境下，為什麼不建議用 `--reload`，也不建議把資料庫密碼寫死在 `docker-compose.yml`
+
+
 
 ### 驗收標準
 
@@ -1042,7 +1293,11 @@ docker compose up --build
 
 ---
 
+
+
 ## W12：部署與整合專題
+
+
 
 ### 學習目標
 
@@ -1058,6 +1313,8 @@ docker compose up --build
   - 或在自己的雲端主機用 docker-compose 跑起來
 5. **架構回顧**：以你的 software architect 背景，寫一頁簡短的技術筆記，評估這個專案目前的**架構限制**（例如：沒有 rate limiting、沒有 cache layer、沒有背景任務佇列），並列出如果要正式上線，你會優先補強哪三項
 
+
+
 ### 驗收標準
 
 - [ ] 專案可以從乾淨環境（新 clone 下來）依照 README 步驟成功啟動
@@ -1065,6 +1322,8 @@ docker compose up --build
 - [ ] 完成架構限制評估筆記
 
 ---
+
+
 
 ## 學習方式提醒
 
