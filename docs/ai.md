@@ -252,3 +252,61 @@ uvicorn（run.bat）讀 app.main:app
 - 下次: 公開測前記得 run.bat + DB；Swagger 用 `/api/docs`；note 先查 id。
 
 ---
+
+# W04
+## 1. 本週 Project Goal
+把 notes 做成完整 REST CRUD，並把 API 拆成路由、資料格式、SQL、連線四層。
+
+## 2. 本週完成
+- [x] `POST/GET/PUT/DELETE /api/notes`；找不到 404，新增 201，刪除 204
+- [x] `schemas`／`routers`／`repositories`；SQL 仍用 `psycopg`，細節見 `docs/architecture.md`
+- [x] Swagger `/api/docs` 測過 `POST /api/notes` 回 201
+
+## 3. 問 AI 的三個重要問題
+- [x] Q1 一次 `POST /api/notes` 依序經過哪些檔？各管什麼？
+- [x] Q2 Swagger 一直轉圈圈，是哪裡卡住？
+- [x] Q3 `main.py` 對 notes 做了什麼、沒做什麼？
+
+### Q1
+- Prompt: 一次 `POST /api/notes` 會依序經過哪幾個檔？各管什麼？201／200／404 是不是都在路由層？
+- AI 建議摘要: `main.py` 掛路由 → `routers/notes.py`（方法與狀態碼）→ `schemas/notes.py`（檢查 body）→ `repositories/notes.py`（SQL）→ `core/db.py`（連線）。201、200、204、404 在 router。422 是 schema 驗證失敗，函式本體還沒執行。repository 找不到只回 `None`。
+- 我驗證的方法: `POST /api/notes` 回 201；少欄位時 Swagger 顯示 422。
+- 最後採用: 狀態碼不寫進 SQL 那一層。
+
+### Q2
+- Prompt: 一直在轉圈圈。
+- AI 建議摘要: `/api/docs` 已 200，轉的是 notes API 在連資料庫。`.env` 指向 5433，那套 PostgreSQL 沒開，`psycopg` 會等到逾時。5432 是另一套，連錯埠也沒用。
+- 我驗證的方法: log 出現 `connection timeout` port 5433；`pg_ctl start` 之後 `POST /api/notes` 201。
+- 最後採用: 測 notes 前先開 5433，`run.bat` 不要關。
+
+### Q3
+- Prompt: `main.py` 對 notes 做了什麼、沒做什麼？
+- AI 建議摘要: 只 `include_router`，把 `/notes` 掛成 `/api/notes`。查詢、新增、刪除的 SQL 在 repository，不寫在 `main.py`。
+- 我驗證的方法: `main.py` 沒有 `SELECT`／`INSERT`；`POST /api/notes` 仍回 201。
+- 最後採用: `main.py` 當入口；notes 邏輯留在 router 與 repository。
+
+## 4. Web Concept of the Week
+```text
+/api/notes
+  → routers/notes.py      方法、狀態碼
+  → schemas/notes.py      NoteCreate／NoteResponse
+  → repositories/notes.py SQL（%s）
+  → core/db.py            DATABASE_URL
+```
+
+## 5. Debugging Record
+- Problem: Swagger 一直轉
+- Error: connection timeout，port 5433
+- Root cause: ZIP PostgreSQL 沒在跑；FastAPI 仍在 7777
+- Fix: `pg_ctl start` 後再測
+
+## 6. Security Check
+- `.env` 不進 Git
+- SQL 用 `%s`，不把使用者輸入拼進字串
+- CRUD 尚未做登入
+
+## 7. Reflection (反思)
+分層是為了改 SQL 時不用翻 HTTP。轉圈先看資料庫有沒有開，不要先改路由。
+- 下次: 5433 與 `run.bat` 都開著再進 `/api/docs`。
+
+---
