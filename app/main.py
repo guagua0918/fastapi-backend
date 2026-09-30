@@ -2,13 +2,13 @@ from pathlib import Path
 import os
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from pydantic import BaseModel
 from starlette.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.core.db import get_connection
+from app.routers.notes import legacy_router, router as notes_router
 
 load_dotenv()
 
@@ -55,13 +55,6 @@ class Item(BaseModel):
     price: float
 
 
-class Note(BaseModel):
-    id: int
-    title: str
-    content: str
-    created_at: str
-
-
 @api_router.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
@@ -77,32 +70,9 @@ def create_item(item: Item) -> Item:
     return item
 
 
-@api_router.get("/note/{note_id}", response_model=Note)
-def get_note(note_id: int) -> Note:
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, title, content, created_at
-                FROM notes
-                WHERE id = %s
-                """,
-                (note_id,),
-            )
-            row = cur.fetchone()
-
-    if row is None:
-        raise HTTPException(status_code=404, detail="Note not found")
-
-    return Note(
-        id=row[0],
-        title=row[1],
-        content=row[2],
-        created_at=row[3].isoformat(),
-    )
-
-
 app.include_router(api_router)
+app.include_router(notes_router, prefix="/api")
+app.include_router(legacy_router, prefix="/api")
 
 
 @app.get("/", include_in_schema=False)
