@@ -9,6 +9,7 @@ from starlette.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routers.notes import legacy_router, router as notes_router
+from app.routers.subclass import router as subclass_router
 
 load_dotenv()
 
@@ -42,11 +43,19 @@ def redoc_ui():
         title=app.title + " - ReDoc",
     )
 
-# 擴充 StaticFiles：路徑不是 .html／.css 就回 404
+# 擴充 StaticFiles：只允許前端需要的靜態資源（html/css/js，以及 js、json 目錄）
 class HtmlCssOnlyStaticFiles(StaticFiles):
+    allowed_extensions = {".html", ".css", ".js", ".svg"}
+    allowed_directories = {"js", "json", "css"}
+
     async def get_response(self, path: str, scope: dict) -> PlainTextResponse:
-        if path and not path.endswith((".html", ".css")):
-            return PlainTextResponse("Not Found", status_code=404)
+        if path:
+            suffix = Path(path).suffix.lower()
+            top = path.replace("\\", "/").split("/", 1)[0]
+            ok_ext = suffix in self.allowed_extensions
+            ok_dir = top in self.allowed_directories
+            if not (ok_ext or ok_dir):
+                return PlainTextResponse("Not Found", status_code=404)
         return await super().get_response(path, scope)
 
 
@@ -73,6 +82,7 @@ def create_item(item: Item) -> Item:
 app.include_router(api_router)
 app.include_router(notes_router, prefix="/api")
 app.include_router(legacy_router, prefix="/api")
+app.include_router(subclass_router, prefix="/api")
 
 
 @app.get("/", include_in_schema=False)
