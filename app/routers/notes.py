@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
+from app.core.security import get_current_member
 from app.repositories import notes as notes_repo
 from app.schemas.notes import NoteCreate, NoteResponse
 
-router = APIRouter(prefix="/notes", tags=["notes"])
-legacy_router = APIRouter(tags=["notes"])
+router = APIRouter(prefix="/notes", tags=["notes"], dependencies=[Depends(get_current_member)])
+legacy_router = APIRouter(tags=["notes"], dependencies=[Depends(get_current_member)])
 
 
 def _get_or_404(note_id: int) -> dict:

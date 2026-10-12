@@ -7,7 +7,9 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from pydantic import BaseModel
 from starlette.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
+from app.routers.auth import router as auth_router
 from app.routers.notes import legacy_router, router as notes_router
 from app.routers.subclass import router as subclass_router
 
@@ -22,6 +24,12 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     openapi_url="/api/openapi.json",
+)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ["SESSION_SECRET_KEY"],
+    same_site="lax",
+    https_only=os.getenv("AUTH_COOKIE_SECURE", "true").lower() == "true",
 )
 api_router = APIRouter(prefix="/api")
 public_directory = Path(__file__).resolve().parents[2] / "webui-lab"
@@ -83,6 +91,7 @@ app.include_router(api_router)
 app.include_router(notes_router, prefix="/api")
 app.include_router(legacy_router, prefix="/api")
 app.include_router(subclass_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 
 @app.get("/", include_in_schema=False)
