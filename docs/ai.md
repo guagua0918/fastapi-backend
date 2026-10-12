@@ -310,3 +310,68 @@ uvicorn（run.bat）讀 app.main:app
 - 下次: 5433 與 `run.bat` 都開著再進 `/api/docs`。
 
 ---
+
+# W05
+## 1. 本週 Project Goal
+用 `insertClass` 長目錄樹，用 view 把 JOIN 存成 `vd_subclass`，再提供 `GET /api/subclass/pcid/{id}`。
+
+## 2. 本週完成
+- [x] `public` 的 `class`、`inheritance`、`object`、`co`
+- [x] 目錄：首頁 → hahahan → 掃描、運動菜單、運動
+- [x] `vd_subclass` 與 `GET /api/subclass/pcid/1`
+- [x] 刪掉舊的 `i3s` schema，之後只用上課這套
+
+## 3. 問 AI 的三個重要問題
+- [x] Q1 我沒有 GRANT 為什麼還查得到 view？
+- [x] Q2 `/api/subclass/pcid/1` 怎麼一路變成 JSON？
+- [x] Q3 `public.class` 和以前的 `i3s.class` 是同一張表嗎？
+
+### Q1
+- Prompt:
+為什麼我沒做 `GRANT SELECT ON vd_subclass`，用 hahahan 還是查得到？講義說的 API 最小授權到底在分什麼？
+- AI 建議摘要:
+建表、建 view 的人是擁有者，本來就能 SELECT，不用再授權給自己。最小授權是給另一個權限較小的 API 帳號：只 `GRANT SELECT` 這張 view，不把 `class` 的刪改權限一起給出去。
+- 我驗證的方法:
+用 hahahan 執行 `SELECT * FROM vd_subclass WHERE pcid = 1`，看得到掃描、運動菜單、運動。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用擁有者自己查不必 GRANT；之後若 API 改用別的帳號，再只授 view 的 SELECT。
+
+### Q2
+- Prompt:
+`GET /api/subclass/pcid/1` 從網址到 JSON 經過哪些檔？repository 為什麼不自己寫 `psycopg.connect`？
+- AI 建議摘要:
+`main.py` 把 subclass router 掛在 `/api`。`routers/subclass.py` 接到路徑，取出 `pcid=1`，呼叫 repository。repository 用 `get_connection()`，連線字串在 `.env`，由 `core/db.py` 讀。SQL 是 `SELECT ... FROM vd_subclass WHERE pcid = %s`。`schemas/subclass.py` 規定回傳 `pcid`、`parent_name`、`cid`、`child_name`。
+- 我驗證的方法:
+重啟 FastAPI 後開 `/api/subclass/pcid/1`，JSON 裡有掃描、運動菜單、運動。對過 router 沒有自己組目錄名稱。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用跟 notes 一樣分層；SQL 留在 repository，不寫進 `main.py`。
+
+### Q3
+- Prompt:
+`public.class` 跟我之前建的 `i3s.class` 是同一張表嗎？沒寫 schema 時 `SELECT * FROM class` 會打到哪一套？
+- AI 建議摘要:
+不是同一張。完整名字是 `schema.表`。W05 這套在 `public`；舊的六張表在 `i3s`。沒寫 schema 時走預設 `search_path`，也就是 `public.class`。
+- 我驗證的方法:
+`\dt` 看到 `public.class` 與當時的 `i3s.class` 同時存在；查 `class` 得到的是首頁、hahahan 那套。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用只留上課的 `public` 表，並刪掉 `i3s` schema。
+
+## 4. Web Concept of the Week
+View 是存好的 JOIN，不是另一份資料。API 只對 `vd_subclass` 下 `SELECT`。
+
+## 5. Debugging Record
+- Problem: `psql` 連 5433 被拒絕
+- Error: connection refused
+- Root cause: ZIP 版 PostgreSQL 沒在跑
+- Fix: `pg_ctl -D pgsql-data -o "-p 5433" start`
+
+## 6. Security Check
+- `.env` 不進 Git
+- API 用 `%s` 傳 `pcid`，不把網址參數拼進 SQL
+- 擁有者與最小授權是兩件事；API 若換帳號，只授 view 的 SELECT
+
+## 7. Reflection (反思)
+目錄先長在 `class` / `inheritance`，查詢交給 view，HTTP 只負責把 `pcid` 傳進去。
+- 下次: 先確認連到的是 `public.class`，不要和別的 schema 搞混。
+
+---
