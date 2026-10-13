@@ -375,3 +375,70 @@ View 是存好的 JOIN，不是另一份資料。API 只對 `vd_subclass` 下 `S
 - 下次: 先確認連到的是 `public.class`，不要和別的 schema 搞混。
 
 ---
+
+# W06
+## 1. 本週 Project Goal
+用 Google 登入證明是誰，由自己的後端發 JWT，放進 HttpOnly cookie，並讓 `notes`、`subclass` 沒登入就回 401。
+
+## 2. 本週完成
+- [x] `member` 表，`google_sub` 唯一
+- [x] `GET /api/auth/google/login`、`callback`、`/api/auth/me`、`POST /api/auth/logout`
+- [x] 登入後簽自己的 JWT，cookie 名稱 `access_token`
+- [x] `notes`、`subclass` 未登入回 401
+- [x] 右上角未登入顯示登入，登入後顯示 Gmail 名稱和頭貼
+
+## 3. 問 AI 的三個重要問題
+- [x] Q1 網站問我允不允許 cookie，和登入那張是同一個東西嗎？
+- [x] Q2 登出之後，被拿走的 JWT 還能不能用？
+- [x] Q3 人去 Google 改了信箱，會多一列會員嗎？
+
+### Q1
+- Prompt:
+平常進入網站會問我允不允許紀錄 cookie。那和登入之後瀏覽器自動帶回去的是同一個東西嗎？我的後端現在會設哪幾張？
+- AI 建議摘要:
+是同一種 cookie：伺服器用 `Set-Cookie` 請瀏覽器保存一小段字串，之後對同一個網站的請求會自動放進 `Cookie` 標頭。彈窗多半在問要不要再存廣告或流量統計。登入這兩張是自己要求登入才有的，不靠那個彈窗。`session` 在跳去 Google 之前寫入，裡面是 OAuth 的 `state`。`access_token` 在 callback 成功時寫入，裡面是自己簽的 JWT，HttpOnly，JavaScript 讀不到原文。
+- 我驗證的方法:
+看 `app/routers/auth.py` 的 `set_cookie`（名稱 `access_token`、`httponly=True`）和 `app/main.py` 的 `SessionMiddleware`。頁面上沒有「允許 cookie」按鈕，也沒有統計用的 cookie。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用只設登入用的兩張 cookie，不做追蹤，也不做允許彈窗。
+
+### Q2
+- Prompt:
+登出是不是只把瀏覽器裡的 `access_token` 刪掉？這張 JWT 在過期前已經被別人拿到的話，我登出之後他還能不能打 `/api/auth/me`？後端有沒有一份已作廢清單？
+- AI 建議摘要:
+登出只下 `delete_cookie`，資料庫沒有作廢清單。`/api/auth/me` 只檢查簽名、`iss`、`exp`，再拿 `sub` 查 `member`。票還在效期內、人也還在，就回 200。要讓它立刻失效，得另做作廢清單，或把效期縮短。
+- 我驗證的方法:
+看 `logout` 只有 `delete_cookie(COOKIE_NAME)`。`get_current_member` 沒有查「這張票是否已登出」。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用目前只刪瀏覽器裡的 cookie。知道被拿走的 JWT 在過期前仍然有效；這次沒加作廢清單。
+
+### Q3
+- Prompt:
+`member` 為什麼用 `google_sub` 當唯一鍵，不用 email？我到 Google 把信箱改掉再登入一次，會多一列，還是同一列把 email 換掉？
+- AI 建議摘要:
+Google 的 `sub` 是這個帳號的固定編號，不跟著信箱改。唯一鍵放 `google_sub` 時，再登入走 `ON CONFLICT (google_sub) DO UPDATE`，同一列的 `email`、`name`、`picture` 被更新。
+- 我驗證的方法:
+看 `psql/member.sql` 的 `google_sub text NOT NULL UNIQUE`，以及 `upsert_google_member` 的 `ON CONFLICT (google_sub) DO UPDATE` 會改 `email`。學校站登入成功後，`member` 只有 1 列。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用 `google_sub` 當唯一鍵，再次登入更新同一列，不用 email 去判斷是不是同一個人。
+
+## 4. Web Concept of the Week
+Google 證明這個人是誰。自己的後端發 JWT，放在 HttpOnly cookie 裡。之後 `/api/auth/me` 認的是這張票。
+
+## 5. Debugging Record
+- Problem: 加上 `SessionMiddleware` 後服務起不來
+- Error: `ModuleNotFoundError: itsdangerous`
+- Root cause: session cookie 需要這個套件，當時 venv 還沒裝完
+- Fix: 安裝 `itsdangerous` 後重新啟動；`GET /api/auth/google/login` 回 302
+
+## 6. Security Check
+- `.env` 不進 Git；JWT 與 session 用兩把不同的鑰匙
+- JWT 放 HttpOnly cookie，頁面腳本讀不到原文
+- 登出只刪 cookie，效期內被複製走的票仍然有效
+- cookie 路徑是 `/`，和同學共用學校網域時，瀏覽器會把 `access_token` 送到其他學號路徑；對方沒有這把鑰匙就驗不過，但字串已經出現在對方的請求裡
+
+## 7. Reflection (反思)
+登入分兩段：Google 的 `userinfo` 只用來建立或更新 `member`；之後每個 API 只認自己簽的 JWT。
+- 下次: 若要讓登出立刻作廢，再加作廢清單；cookie 路徑改成自己的 `/s115321503`。
+
+---

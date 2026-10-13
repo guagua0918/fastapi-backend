@@ -1589,6 +1589,78 @@ callback URL 直接在瀏覽器開啟時沒有 Google 返回的有效 state/code
 - 不要把 `.env`、OAuth secrets、JWT、cookie 值或帶 authorization code 的完整 callback URL commit 到 Git、issue 或文件。
 - 執行 `psql/createtables.sql` 前先修復目前檔尾未完成的 `SELECT *`。此腳本前段會 `DROP TABLE IF EXISTS notes`，正式 DB 請採非破壞性的 migration 或只執行需要的 member/GRANT SQL。
 
+### 足弓小幫手：OAuth 2.0、OpenID Connect、JWT 各自做什麼
+
+Google 負責證明「這個人是誰」，自己的後端負責發一張通行證。之後瀏覽器拿這張通行證問 `/api/auth/me`。
+
+**OAuth 2.0** 是授權流程。使用者在 Google 登入並同意網站讀取基本資料後，Google 把瀏覽器帶回 callback，並附上一次性的 `code`。後端用這個 `code` 向 Google 換資料。使用者的 Google 密碼不會進這支程式。
+
+**OpenID Connect** 是加在 OAuth 2.0 上面的身份層。程式向 Google 要的範圍是 `openid email profile`。換回來的 `userinfo` 才有「這個人是誰」：`sub`（Google 帳號的固定編號）、`email`、`name`、`picture`、`email_verified`。`member` 以 `google_sub` 當唯一鍵。
+
+**JWT** 是後端自己簽的通行證，不是 Google 那張。`create_access_token` 用 `JWT_SECRET_KEY` 做 HS256 簽名，內容只有四個欄位：`sub`（自己的 `member.id`）、`iss`（`foot-helper`）、`iat`（簽發時間）、`exp`（到期時間）。之後 `/api/auth/me`、`notes`、`subclass` 認的是這張，不再問 Google。
+
+### JWT 放在 localStorage、sessionStorage、HttpOnly cookie 的風險
+
+目前放的是 **HttpOnly cookie**，名稱 `access_token`。`httponly=True`，網頁上的 JavaScript 讀不到；學校站 `secure` 為 true，只走 HTTPS；`samesite=lax`，別的網站用表單或腳本打這個 API 時，瀏覽器通常不會帶上這張 cookie。`max_age` 預設 8 小時（`ACCESS_TOKEN_EXPIRE_SECONDS=28800`）。
+
+| 存放位置 | 網頁上的 JavaScript 能不能讀到 | 關掉分頁後還在不在 | 主要風險 |
+|---|---|---|---|
+| `localStorage` | 能 | 還在，直到被清掉 | 網站若被植入惡意腳本（XSS），腳本可以直接把 JWT 複製走，之後在別處重放 |
+| `sessionStorage` | 能 | 關掉該分頁就沒了 | 同樣可被 XSS 讀走，竊取窗口限在這個分頁還開著的時候 |
+| HttpOnly cookie | 不能 | 依 `max_age`，預設 8 小時 | 腳本複製不走字串；若網站自己被 XSS，腳本仍可請瀏覽器帶著 cookie 去打 API |
+
+HttpOnly 擋的是「把通行證原文偷走」。它擋不住「惡意腳本就在這個網站裡、請瀏覽器代送 cookie」。
+
+### JWT 被改過、過期、帳號刪了、cookie 被清掉
+
+四種最後都是 **401**。前端 `auth.js` 收到失敗就回到「登入」。差在後端哪一步擋下來。
+
+| 情況 | 後端怎麼判斷 | 回應 |
+|---|---|---|
+| JWT 被改過 | 簽名對不上 `JWT_SECRET_KEY`，或 `iss` 不是 `foot-helper` | 401，`Invalid token` |
+| JWT 過期 | `exp` 已過（預設簽發後 8 小時） | 401，`Invalid token` |
+| 帳號從 `member` 刪了，或 `email_verified` 不再是 true | 簽名仍有效，但 `get_verified_member` 查不到 | 401，`User not found` |
+| cookie 被清掉 | 請求裡沒有 `access_token` | 401，`Not authenticated` |
+
+前兩種在驗簽時就結束，不會去查資料庫。帳號被刪是簽章通過之後才查庫。cookie 被清掉則連字串都沒有。
+
+### 從按登入到 `/api/auth/me`
+
+```mermaid
+sequenceDiagram
+    participant 瀏覽器
+    participant 你的後端
+    participant Google
+    participant PostgreSQL
+
+    瀏覽器->>你的後端: 開啟頁面，auth.js 呼叫 GET /api/auth/me
+    你的後端-->>瀏覽器: 401，右上角顯示「登入」
+    瀏覽器->>你的後端: 點「登入」，GET /api/auth/google/login
+    你的後端-->>瀏覽器: 導向 Google 登入頁
+    瀏覽器->>Google: 使用者登入並同意
+    Google-->>瀏覽器: 導回 /api/auth/google/callback?code=...
+    瀏覽器->>你的後端: 帶著 code 打開 callback
+    你的後端->>Google: 用 code 換 userinfo
+    Google-->>你的後端: sub、email、name、picture
+    你的後端->>PostgreSQL: 依 google_sub 新增或更新 member
+    PostgreSQL-->>你的後端: member.id
+    你的後端-->>瀏覽器: 303 回到首頁，Set-Cookie access_token
+    瀏覽器->>你的後端: 頁面再載入，GET /api/auth/me（瀏覽器自動帶 cookie）
+    你的後端->>你的後端: 驗簽名、iss、exp，取出 sub
+    你的後端->>PostgreSQL: 用 member.id 查已驗證會員
+    你的後端-->>瀏覽器: 200，name、email、picture
+```
+
+對到檔案，順序是：
+
+1. 每個頁面載入 `js/auth.js`，先打 `GET api/auth/me`。沒有 cookie 就 401，右上角維持「登入」，連結指向 `api/auth/google/login`。
+2. 點下去後，`google_login` 把瀏覽器送到 Google。
+3. Google 把人送回 `GOOGLE_REDIRECT_URI`，也就是 `/s115321503/api/auth/google/callback`。
+4. `google_callback` 用 `code` 換 `userinfo`。沒有 `sub`、沒有 email、或 email 未驗證，就 401。
+5. `upsert_google_member` 以 `google_sub` 寫入 `member`。同一人再登入會更新名稱和頭貼，不會多一筆。
+6. `create_access_token(member.id)` 簽自己的 JWT，放進 HttpOnly cookie，然後 303 回首頁。
+7. 首頁再跑一次 `auth.js`。這次 cookie 會自動附上。`get_current_member` 先验 JWT，再依 `sub` 查 `member`，回傳名稱、email、頭貼網址。`showSignedIn` 把右上角換成 Gmail 名稱和圓形頭貼。
+
 ---
 
 
