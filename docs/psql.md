@@ -1589,6 +1589,8 @@ callback URL 直接在瀏覽器開啟時沒有 Google 返回的有效 state/code
 - 不要把 `.env`、OAuth secrets、JWT、cookie 值或帶 authorization code 的完整 callback URL commit 到 Git、issue 或文件。
 - 執行 `psql/createtables.sql` 前先修復目前檔尾未完成的 `SELECT *`。此腳本前段會 `DROP TABLE IF EXISTS notes`，正式 DB 請採非破壞性的 migration 或只執行需要的 member/GRANT SQL。
 
+
+
 ### 足弓小幫手：OAuth 2.0、OpenID Connect、JWT 各自做什麼
 
 Google 負責證明「這個人是誰」，自己的後端負責發一張通行證。之後瀏覽器拿這張通行證問 `/api/auth/me`。
@@ -1603,11 +1605,13 @@ Google 負責證明「這個人是誰」，自己的後端負責發一張通行�
 
 目前放的是 **HttpOnly cookie**，名稱 `access_token`。`httponly=True`，網頁上的 JavaScript 讀不到；學校站 `secure` 為 true，只走 HTTPS；`samesite=lax`，別的網站用表單或腳本打這個 API 時，瀏覽器通常不會帶上這張 cookie。`max_age` 預設 8 小時（`ACCESS_TOKEN_EXPIRE_SECONDS=28800`）。
 
-| 存放位置 | 網頁上的 JavaScript 能不能讀到 | 關掉分頁後還在不在 | 主要風險 |
-|---|---|---|---|
-| `localStorage` | 能 | 還在，直到被清掉 | 網站若被植入惡意腳本（XSS），腳本可以直接把 JWT 複製走，之後在別處重放 |
-| `sessionStorage` | 能 | 關掉該分頁就沒了 | 同樣可被 XSS 讀走，竊取窗口限在這個分頁還開著的時候 |
-| HttpOnly cookie | 不能 | 依 `max_age`，預設 8 小時 | 腳本複製不走字串；若網站自己被 XSS，腳本仍可請瀏覽器帶著 cookie 去打 API |
+
+| 存放位置             | 網頁上的 JavaScript 能不能讀到 | 關掉分頁後還在不在           | 主要風險                                         |
+| ---------------- | --------------------- | ------------------- | -------------------------------------------- |
+| `localStorage`   | 能                     | 還在，直到被清掉            | 網站若被植入惡意腳本（XSS），腳本可以直接把 JWT 複製走，之後在別處重放      |
+| `sessionStorage` | 能                     | 關掉該分頁就沒了            | 同樣可被 XSS 讀走，竊取窗口限在這個分頁還開著的時候                 |
+| HttpOnly cookie  | 不能                    | 依 `max_age`，預設 8 小時 | 腳本複製不走字串；若網站自己被 XSS，腳本仍可請瀏覽器帶著 cookie 去打 API |
+
 
 HttpOnly 擋的是「把通行證原文偷走」。它擋不住「惡意腳本就在這個網站裡、請瀏覽器代送 cookie」。
 
@@ -1615,12 +1619,14 @@ HttpOnly 擋的是「把通行證原文偷走」。它擋不住「惡意腳本�
 
 四種最後都是 **401**。前端 `auth.js` 收到失敗就回到「登入」。差在後端哪一步擋下來。
 
-| 情況 | 後端怎麼判斷 | 回應 |
-|---|---|---|
-| JWT 被改過 | 簽名對不上 `JWT_SECRET_KEY`，或 `iss` 不是 `foot-helper` | 401，`Invalid token` |
-| JWT 過期 | `exp` 已過（預設簽發後 8 小時） | 401，`Invalid token` |
-| 帳號從 `member` 刪了，或 `email_verified` 不再是 true | 簽名仍有效，但 `get_verified_member` 查不到 | 401，`User not found` |
-| cookie 被清掉 | 請求裡沒有 `access_token` | 401，`Not authenticated` |
+
+| 情況                                          | 後端怎麼判斷                                          | 回應                      |
+| ------------------------------------------- | ----------------------------------------------- | ----------------------- |
+| JWT 被改過                                     | 簽名對不上 `JWT_SECRET_KEY`，或 `iss` 不是 `foot-helper` | 401，`Invalid token`     |
+| JWT 過期                                      | `exp` 已過（預設簽發後 8 小時）                            | 401，`Invalid token`     |
+| 帳號從 `member` 刪了，或 `email_verified` 不再是 true | 簽名仍有效，但 `get_verified_member` 查不到               | 401，`User not found`    |
+| cookie 被清掉                                  | 請求裡沒有 `access_token`                            | 401，`Not authenticated` |
+
 
 前兩種在驗簽時就結束，不會去查資料庫。帳號被刪是簽章通過之後才查庫。cookie 被清掉則連字串都沒有。
 
@@ -1650,6 +1656,8 @@ sequenceDiagram
     你的後端->>PostgreSQL: 用 member.id 查已驗證會員
     你的後端-->>瀏覽器: 200，name、email、picture
 ```
+
+
 
 對到檔案，順序是：
 
