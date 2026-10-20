@@ -1667,7 +1667,56 @@ sequenceDiagram
 4. `google_callback` 用 `code` 換 `userinfo`。沒有 `sub`、沒有 email、或 email 未驗證，就 401。
 5. `upsert_google_member` 以 `google_sub` 寫入 `member`。同一人再登入會更新名稱和頭貼，不會多一筆。
 6. `create_access_token(member.id)` 簽自己的 JWT，放進 HttpOnly cookie，然後 303 回首頁。
-7. 首頁再跑一次 `auth.js`。這次 cookie 會自動附上。`get_current_member` 先验 JWT，再依 `sub` 查 `member`，回傳名稱、email、頭貼網址。`showSignedIn` 把右上角換成 Gmail 名稱和圓形頭貼。
+7. 首頁再跑一次 `auth.js`。這次 cookie 會自動附上。`get_current_member` 先验 JWT，再依 `sub` 查 `member`，回傳名稱、email、頭貼網址。`showSignedIn` 顯示名字＋頭像；點頭像可開「個人設定／登出」。
+
+---
+
+### 本週筆記：登入綁 API＋側欄接 `vd_subclass`
+
+W05 的目錄 view 與 W06 的 JWT 在專案裡接在一起。分層說明見 [`architecture.md`](architecture.md)。
+
+**後端（本 repo）**
+
+| 層 | 檔案 | 做什麼 |
+|---|---|---|
+| 保護路由 | `routers/subclass.py`、`routers/notes.py` | `dependencies=[Depends(get_current_member)]`，沒票 → 401 |
+| 驗票 | `core/security.py` | 讀 cookie／Bearer、驗 JWT、再查 `member` |
+| SQL | `repositories/subclass.py` | `SELECT ... FROM vd_subclass WHERE pcid = %s` |
+| 登入／me／logout | `routers/auth.py` | Google OIDC → upsert → 設／清 `access_token` |
+| 無副檔名靜態頁 | `main.py` 的 `HtmlCssOnlyStaticFiles` | `/scan` → `webui-lab/scan.html` |
+
+**前端（`webui-lab`，筆記在 `docs/web.md` W06）**
+
+| 檔案 | 做什麼 |
+|---|---|
+| `js/auth.js` | `GET api/auth/me`；登出 `POST api/auth/logout` |
+| `js/nav.js` | `GET api/subclass/pcid/1`；401 不畫掃描／運動／菜單，並擋直接開那些頁 |
+| 各頁底部導覽 | 總覽、教學寫死；中間 `#nav-subclass` 由 API 填 |
+
+**資料（本機 `fastapi_dev`）**
+
+```sql
+-- 側欄用的三列（hahahan 的子節點）
+SELECT pcid, parent_name, cid, child_name
+FROM vd_subclass
+WHERE pcid = 1
+ORDER BY cid;
+-- → 掃描、運動菜單、運動
+```
+
+教學頁不進 `class`。表擁有者是 `hahahan`；用 `dev_user` 直接 `SELECT` 會 permission denied，那是 DB GRANT，和 API 的 401 不同層。
+
+**為什麼權限鎖在 API**
+
+靜態 HTML 誰都能開。真正不能匿名拿的是 JSON。前端藏連結只是 UX；沒有有效 JWT，`/api/subclass/pcid/1` 進不了 repository。
+
+### 驗收對照（W06 專案）
+
+- [x] Google 登入後有 `member` 列；`/api/auth/me` 回 profile
+- [x] 未登入：`/api/auth/me`、`/api/subclass/pcid/1`、`/api/notes` → 401
+- [x] 登入後側欄出現掃描／運動菜單／運動；登出後消失
+- [x] 分層：router 不寫 SQL；SQL 在 repository；登入檢查在 `get_current_member`
+- [ ] （選）`dev_user` 只 `GRANT SELECT` 給需要的 view／表（最小授權）
 
 ---
 

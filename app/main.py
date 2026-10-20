@@ -3,6 +3,7 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI
+from starlette.exceptions import HTTPException
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from pydantic import BaseModel
 from starlette.responses import FileResponse, PlainTextResponse
@@ -57,6 +58,11 @@ class HtmlCssOnlyStaticFiles(StaticFiles):
     allowed_directories = {"js", "json", "css"}
 
     async def get_response(self, path: str, scope: dict) -> PlainTextResponse:
+        if path and not Path(path).suffix:
+            try:
+                return await super().get_response(f"{path}.html", scope)
+            except HTTPException:
+                return PlainTextResponse("Not Found", status_code=404)
         if path:
             suffix = Path(path).suffix.lower()
             top = path.replace("\\", "/").split("/", 1)[0]
