@@ -1094,8 +1094,8 @@ GRANT SELECT ON vd_subclass TO dev_user; -- API最小授權原則
 
 ### 驗收標準
 
-- [ ] REST API測試
-- [ ] API最小授權原則
+- [x] REST API測試
+- [x] API最小授權原則
 
 ---
 
@@ -1671,29 +1671,35 @@ sequenceDiagram
 
 ---
 
+
+
 ### 本週筆記：登入綁 API＋側欄接 `vd_subclass`
 
-W05 的目錄 view 與 W06 的 JWT 在專案裡接在一起。分層說明見 [`architecture.md`](architecture.md)。
+W05 的目錄 view 與 W06 的 JWT 在專案裡接在一起。分層說明見 `[architecture.md](architecture.md)`。
 
 **後端（本 repo）**
 
-| 層 | 檔案 | 做什麼 |
-|---|---|---|
-| 保護路由 | `routers/subclass.py`、`routers/notes.py` | `dependencies=[Depends(get_current_member)]`，沒票 → 401 |
-| 驗票 | `core/security.py` | 讀 cookie／Bearer、驗 JWT、再查 `member` |
-| SQL | `repositories/subclass.py` | `SELECT ... FROM vd_subclass WHERE pcid = %s` |
-| 登入／me／logout | `routers/auth.py` | Google OIDC → upsert → 設／清 `access_token` |
-| 無副檔名靜態頁 | `main.py` 的 `HtmlCssOnlyStaticFiles` | `/scan` → `webui-lab/scan.html` |
 
-**前端（`webui-lab`，筆記在 `docs/web.md` W06）**
+| 層            | 檔案                                       | 做什麼                                                   |
+| ------------ | ---------------------------------------- | ----------------------------------------------------- |
+| 保護路由         | `routers/subclass.py`、`routers/notes.py` | `dependencies=[Depends(get_current_member)]`，沒票 → 401 |
+| 驗票           | `core/security.py`                       | 讀 cookie／Bearer、驗 JWT、再查 `member`                     |
+| SQL          | `repositories/subclass.py`               | `SELECT ... FROM vd_subclass WHERE pcid = %s`         |
+| 登入／me／logout | `routers/auth.py`                        | Google OIDC → upsert → 設／清 `access_token`             |
+| 無副檔名靜態頁      | `main.py` 的 `HtmlCssOnlyStaticFiles`     | `/scan` → `webui-lab/scan.html`                       |
 
-| 檔案 | 做什麼 |
-|---|---|
-| `js/auth.js` | `GET api/auth/me`；登出 `POST api/auth/logout` |
-| `js/nav.js` | `GET api/subclass/pcid/1`；401 不畫掃描／運動／菜單，並擋直接開那些頁 |
-| 各頁底部導覽 | 總覽、教學寫死；中間 `#nav-subclass` 由 API 填 |
 
-**資料（本機 `fastapi_dev`）**
+**前端（**`webui-lab`**，筆記在** `docs/web.md` **W06）**
+
+
+| 檔案           | 做什麼                                               |
+| ------------ | ------------------------------------------------- |
+| `js/auth.js` | `GET api/auth/me`；登出 `POST api/auth/logout`       |
+| `js/nav.js`  | `GET api/subclass/pcid/1`；401 不畫掃描／運動／菜單，並擋直接開那些頁 |
+| 各頁底部導覽       | 總覽、教學寫死；中間 `#nav-subclass` 由 API 填                |
+
+
+**資料（本機** `fastapi_dev`**）**
 
 ```sql
 -- 側欄用的三列（hahahan 的子節點）
@@ -1724,10 +1730,6 @@ ORDER BY cid;
 
 ## W7：測試（pytest）{#pytest}
 
-
-
-### 學習目標
-
 用 pytest + FastAPI TestClient 對 CRUD 與 Auth 寫自動化測試。
 
 ### 操作步驟
@@ -1737,7 +1739,6 @@ pip Install pytest httpx
 ```
 
 `tests/conftest.py`（用獨立測試資料庫，避免污染開發資料）：
-
 ```python
 import pytest
 from sqlalchemy import create_engine
@@ -1767,7 +1768,6 @@ def client(db_session):
 ```
 
 `tests/test_notes.py`：
-
 ```python
 def test_create_note(client):
     response = client.post("/notes/", json={"title": "test", "content": "hello"})
@@ -1779,35 +1779,28 @@ def test_get_nonexistent_note(client):
     assert response.Status_code == 404
 ```
 
-
-
 ### 本週練習
-
 1. 為 `/register` 與 `/login` 寫測試（含密碼錯誤情境）
 2. 為「使用者不能刪除別人的 note」這個規則寫一個測試
 3. 執行 `pytest -v`，確保全部通過
 
-
-
 ### 驗收標準
-
 - [ ] 測試覆蓋所有 CRUD 端點與主要錯誤情境
 - [ ] `pytest` 全數通過，且測試資料庫不影響開發資料庫
 
+### 本週筆記（足弓專案）
+- 無密碼 `/register`／`/login`：改測 JWT 門禁（401）＋ notes CRUD；「不能動別人資料」改測 scan 404／401。
+- `tests/`：`conftest` 的 `auth_client` 用 `dependency_overrides` 假裝登入；`pytest -v` 已通過。
+- **資安**：override **只在跑 pytest 的行程內**有效，不是對外後門。線上 uvicorn 仍驗真 JWT，沒票還是 401。
+
 ---
-
-
 
 ## W8：非同步與連線池 {#pools}
 
-
-
 ### 學習目標
-
 理解 FastAPI 的 async 支援，並改用 async ORM 操作。
 
 ### 為什麼這樣安排
-
 你熟悉 Node.js 的非同步模型，這週會對照講解 Python 的 `async/await` 跟 Node 的 event loop 概念異同，並說明「不是所有東西都要 async」的判斷原則。
 
 ### 操作步驟
@@ -1817,7 +1810,6 @@ pip Install asyncpg "sqlalchemy[asyncio]"
 ```
 
 `app/core/Database.py`（改為 async engine）：
-
 ```python
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
@@ -1831,7 +1823,6 @@ async def get_db():
 ```
 
 改寫端點為 async：
-
 ```python
 from sqlalchemy import select
 
@@ -1841,31 +1832,20 @@ async def list_notes(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 ```
 
-
-
 ### 本週練習
-
 1. 把 W4-W6 的所有端點改寫為 async 版本
 2. 用 `pool_size` 與 `max_overflow` 參數，理解連線池的上限概念（對應你熟悉的資料庫連線池概念，例如 HikariCP）
 3. 寫一個簡單的負載測試（可用 `locust` 或手動並發請求），比較 sync 與 async 版本在高並發下的差異
 
-
-
 ### 驗收標準
-
 - [ ] 所有端點改為 async 且功能不變
 - [ ] 能解釋「什麼情境下 async 才真的有幫助」（I/O bound vs CPU bound）
 
 ---
 
-
-
 ## W9：進階查詢：分頁、篩選、搜尋 {#paging}
 
-
-
 ### 學習目標
-
 實作實務系統必備的分頁、動態篩選、關鍵字搜尋。
 
 ### 操作步驟
@@ -1891,37 +1871,25 @@ async def list_notes(
     return result.scalars().all()
 ```
 
-
-
 ### 本週練習
-
 1. 加上排序參數（`sort_by`, `order`），允許依 `created_at` 或 `title` 排序
 2. 回傳分頁時，附上總筆數（`X-ToTal-Count` header 或包在 response body）
 3. 針對 `search` 欄位思考：`ilike` 在大資料量時的效能問題，並研究 PostgreSQL 全文搜尋（`tsvector`）作為進階選項
 
-
-
 ### 驗收標準
-
 - [ ] 分頁、篩選、搜尋可以同時組合使用
 - [ ] `limit` 有上限保護，避免一次撈出過多資料
 
 ---
 
-
-
 ## W10：錯誤處理、Logging、Middleware {#logging}
 
-
-
 ### 學習目標
-
 建立統一的錯誤回應格式與結構化 log。
 
 ### 操作步驟
 
 `app/core/exceptions.py`：
-
 ```python
 from FastAPI import Request
 from FastAPI.responses import JSONResponse
@@ -1939,14 +1907,12 @@ async def app_exception_handler(request: Request, exc: AppException):
 ```
 
 在 `main.py` 註冊：
-
 ```python
 from app.core.exceptions import AppException, app_exception_handler
 app.add_exception_handler(AppException, app_exception_handler)
 ```
 
 Logging middleware：
-
 ```python
 import time, logging
 logger = logging.getLogger("app")
@@ -1960,37 +1926,25 @@ async def log_requests(request: Request, call_next):
     return response
 ```
 
-
-
 ### 本週練習
-
 1. 把所有 `HTTPException` 統一改成自訂的 `AppException`，確保錯誤格式一致
 2. 設定 log 同時輸出到 console 與檔案，並區分 `INFO` / `ERROR` 等級
 3. 加一個全域的「未預期例外」處理器，避免 500 錯誤時把 sTack trace 洩漏給前端
 
-
-
 ### 驗收標準
-
 - [ ] 所有錯誤回應格式一致
 - [ ] Log 能追蹤到每個請求的方法、路徑、狀態碼、耗時
 
 ---
 
-
-
 ## W11：Docker 化 {#Docker}
 
-
-
 ### 學習目標
-
 把 FastAPI + PostgreSQL 用 docker-compose 一鍵啟動。
 
 ### 操作步驟
 
 `Dockerfile`：
-
 ```dockerfile
 FROM python:3.13-slim
 WORKDIR /app
@@ -2001,7 +1955,6 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 `docker-compose.yml`：
-
 ```yaml
 services:
   db:
@@ -2029,36 +1982,24 @@ volumes:
 ```
 
 啟動：
-
 ```bash
 docker compose up --build
 ```
 
-
-
 ### 本週練習
-
 1. 確認容器重啟後資料還在（驗證 volume 是否正確掛載）
 2. 加入 migration 自動執行的步驟（在 `api` 容器啟動時先跑 `alembic upgrade head`）
 3. 研究並寫下：production 環境下，為什麼不建議用 `--reload`，也不建議把資料庫密碼寫死在 `docker-compose.yml`
 
-
-
 ### 驗收標準
-
 - [ ] `docker compose up` 後，API 與資料庫都能正常運作且互通
 - [ ] 重啟容器後資料不遺失
 
 ---
 
-
-
 ## W12：部署與整合專題 {#deploy}
 
-
-
 ### 學習目標
-
 把前 11 週的成果整合成一個完整、可展示的後端專案，並理解基本部署概念。
 
 ### 本週任務（作為期末專題，不提供完整程式碼，靠你自己整合）
@@ -2067,22 +2008,19 @@ docker compose up --build
 2. **文件補齊**：撰寫一份 `README.md`，說明專案架構、如何啟動、API 一覽（可搭配 `/docs` 的 Swagger UI）
 3. **CI 基礎**：用 GitHub Actions 設定一個簡單的 workflow，每次 push 自動執行 `pytest`
 4. **部署嘗試**（擇一）：
-  - 部署到 Render / Railway 等平台的免費方案
-  - 或在自己的雲端主機用 docker-compose 跑起來
+   - 部署到 Render / Railway 等平台的免費方案
+   - 或在自己的雲端主機用 docker-compose 跑起來
 5. **架構回顧**：以你的 software architect 背景，寫一頁簡短的技術筆記，評估這個專案目前的**架構限制**（例如：沒有 rate limiting、沒有 cache layer、沒有背景任務佇列），並列出如果要正式上線，你會優先補強哪三項
 
-
-
 ### 驗收標準
-
 - [ ] 專案可以從乾淨環境（新 clone 下來）依照 README 步驟成功啟動
 - [ ] CI 能在 push 時自動跑測試並回報結果
 - [ ] 完成架構限制評估筆記
 
 ---
 
-
-
 ## 學習方式提醒
 
 每週的「本週練習」請自己動手寫，卡住時可以帶著具體錯誤訊息來討論，而不是直接要完整程式碼——這樣 12 週後你會真正掌握這套技術棧的操作邏輯，而不只是有一份能跑的程式碼。
+
+

@@ -442,3 +442,71 @@ Google 證明這個人是誰。自己的後端發 JWT，放在 HttpOnly cookie �
 - 下次: 若要讓登出立刻作廢，再加作廢清單；cookie 路徑改成自己的 `/s115321503`。
 
 ---
+
+# W07
+## 1. 本週 Project Goal
+用 pytest + TestClient 自動測 Auth 門禁與 notes CRUD；沒有密碼登入就改測 JWT／scan 授權。
+
+## 2. 本週完成
+- [x] 安裝 `pytest`、`httpx`；新增 `tests/`
+- [x] `conftest.py`：`client`（未登入）、`auth_client`（override 假會員）
+- [x] 測 401、notes CRUD、scan 找不到／未登入；`pytest -v` 通過
+
+## 3. 問 AI 的三個重要問題
+- [x] Q1 測未登入 401 為什麼不能用 `auth_client`？
+- [x] Q2 override 假裝登入，正式站會不會被繞過？
+- [x] Q3 pytest 全綠＝整條產品都沒問題嗎？
+
+### Q1
+- Prompt:
+`conftest` 有 `client` 跟 `auth_client`。我要測「沒登入應該 401」，為什麼不能用 `auth_client`？那它是給誰用的？
+- AI 建議摘要:
+`auth_client` 會用 `dependency_overrides` 把 `get_current_member` 換成假會員，請求看起來永遠已登入，測不到 401。測門禁用沒 override 的 `client`；測「登入後的 CRUD／／me」才用 `auth_client`，才不用真的走 Google。
+- 我驗證的方法:
+`test_auth.py` 裡 401 用 `client`；`test_me_with_override_returns_profile`、`test_notes.py` 用 `auth_client`。混用會讓 401 測試變假綠燈。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用兩種 fixture 分開：門禁用 `client`，業務用 `auth_client`。
+
+### Q2
+- Prompt:
+測試可以 `dependency_overrides` 假裝已登入、不用走 Google。這樣正式網站會不會被別人繞過登入？算不算資安洞？
+- AI 建議摘要:
+不算。override 只活在「正在跑 pytest 的那個 Python 行程」裡，是測試輔助。對外的 uvicorn 不會掛這些 override，還是驗真 JWT；沒票仍 401。真正有風險的是把「永遠回假會員」寫進正式程式，或把 debug 開關留在 production。
+- 我驗證的方法:
+看 `conftest.py` 只在 fixture 裡設 override，測完 `clear()`。用未 override 的 `client` 打 `/api/auth/me` 仍是 401。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用測試用 override；正式環境不靠這招登入。
+
+### Q3
+- Prompt:
+我 `pytest -v` 全綠了，能不能說 Google 登入跟 CV worker 算足印都沒問題？還缺什麼？
+- AI 建議摘要:
+不能。現有測試多半是門禁、notes CRUD、scan 的 401／404，用 override 假裝登入，沒跑真的 Google OAuth，也沒啟動 worker／SAM。全綠只代表「寫進測試的行為」OK，不是整條掃描 E2E。
+- 我驗證的方法:
+測試檔沒有打 `/api/auth/google/login`，也沒有等 `cv_keypoints_done`。掃描仍要自己開 `run.bat`、PG、`run_cv_worker.bat` 手動走一輪。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用 W07 先覆蓋 Auth＋CRUD／授權邊界；E2E 登入與 CV 當手動或之後再加測。
+
+## 4. Web Concept of the Week
+```text
+pytest 收 test_* → TestClient 打 FastAPI
+  → 測 401 用 client
+  → 測登入後 API 用 auth_client（override，非正式後門）
+```
+
+## 5. Debugging Record
+- Problem: 一開始 venv 沒有 pytest
+- Error: `ModuleNotFoundError: No module named 'pytest'`
+- Root cause: 尚未 `pip install pytest httpx`
+- Fix: 裝進 `fastapi-backend\venv` 後再 `pytest -v`
+
+## 6. Security Check
+- 測試 override ≠ 線上免登入
+- 未帶票／壞票應 401（有自動化覆蓋）
+- notes 測試會碰開發 DB，測完刪自建列；進階可再拆測試庫
+
+## 7. Reflection (反思)
+自動化測的是「門禁與 CRUD 契約」；真登入與影像分析仍要手動或另寫 E2E。
+- 下次: 若 notes 加上 `mid`，補「不能刪別人的 note」；可考慮獨立 `fastapi_test`。
+
+---
