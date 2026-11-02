@@ -1,5 +1,12 @@
 from pathlib import Path
+import asyncio
 import os
+import sys
+from contextlib import asynccontextmanager
+
+# W08：Windows 預設 ProactorEventLoop，psycopg async 無法使用 → 改 Selector
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI
@@ -10,6 +17,7 @@ from starlette.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
+from app.core.db import close_async_pool, close_sync_pool, init_async_pool, init_sync_pool
 from app.routers.auth import router as auth_router
 from app.routers.notes import legacy_router, router as notes_router
 from app.routers.scan import router as scan_router
@@ -20,12 +28,26 @@ load_dotenv()
 # 可選：IIS 子路徑（影響 OpenAPI servers 顯示）；Swagger 已用相對路徑抓 openapi.json
 ROOT_PATH = os.getenv("ROOT_PATH", "").rstrip("/")
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # W08：啟動時開連線池，關閉時歸還
+    init_sync_pool()
+    await init_async_pool()
+    try:
+        yield
+    finally:
+        close_sync_pool()
+        await close_async_pool()
+
+
 app = FastAPI(
     title="HaHaHan's FastAPI Backend",
     root_path=ROOT_PATH,
     docs_url=None,
     redoc_url=None,
     openapi_url="/api/openapi.json",
+    lifespan=lifespan,
 )
 app.add_middleware(
     SessionMiddleware,

@@ -1,4 +1,11 @@
 """W07：TestClient fixtures。用 dependency override 模擬登入，不必真的走 Google。"""
+import asyncio
+import sys
+
+# 須在 import app 前設定（與 main.py 相同：psycopg async on Windows）
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import pytest
 from fastapi.testclient import TestClient
 
