@@ -16,6 +16,7 @@ FAKE_MEMBER = {
     "id": 1,
     "email": "pytest@example.com",
     "name": "Pytest User",
+    "display_name": None,
     "picture": None,
 }
 

@@ -6,8 +6,12 @@ CREATE TABLE IF NOT EXISTS member (
     google_sub      text NOT NULL UNIQUE,
     email           text NOT NULL,
     name            text,
+    display_name    text,
     picture         text,
     email_verified  boolean NOT NULL DEFAULT false,
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now()
 );
+
+-- 既有庫若還沒有 display_name，可另跑 psql/member_display_name.sql
+

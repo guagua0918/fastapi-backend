@@ -7,7 +7,7 @@ from starlette.responses import RedirectResponse, Response
 
 from app.core.security import COOKIE_NAME, create_access_token, get_current_member
 from app.repositories import member as member_repo
-from app.schemas.member import MemberProfile
+from app.schemas.member import MemberProfile, MemberProfileUpdate
 
 load_dotenv()
 
@@ -87,6 +87,23 @@ async def google_callback(request: Request):
 @router.get("/me", response_model=MemberProfile)
 def read_current_member(member: dict = Depends(get_current_member)) -> dict:
     return member
+
+
+@router.patch("/me", response_model=MemberProfile)
+def update_current_member(
+    body: MemberProfileUpdate,
+    member: dict = Depends(get_current_member),
+) -> dict:
+    display_name = body.display_name.strip()
+    if len(display_name) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Display name too short",
+        )
+    updated = member_repo.update_display_name(member["id"], display_name)
+    if updated is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return updated
 
 
 @router.post("/logout")
