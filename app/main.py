@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.routers.auth import router as auth_router
 from app.routers.notes import legacy_router, router as notes_router
+from app.routers.scan import router as scan_router
 from app.routers.subclass import router as subclass_router
 
 load_dotenv()
@@ -54,8 +55,8 @@ def redoc_ui():
 
 # 擴充 StaticFiles：只允許前端需要的靜態資源（html/css/js，以及 js、json 目錄）
 class HtmlCssOnlyStaticFiles(StaticFiles):
-    allowed_extensions = {".html", ".css", ".js", ".svg"}
-    allowed_directories = {"js", "json", "css"}
+    allowed_extensions = {".html", ".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp"}
+    allowed_directories = {"js", "json", "css", "img"}
 
     async def get_response(self, path: str, scope: dict) -> PlainTextResponse:
         if path and not Path(path).suffix:
@@ -93,10 +94,11 @@ def create_item(item: Item) -> Item:
     return item
 
 
-app.include_router(api_router)
-app.include_router(notes_router, prefix="/api")
+app.include_router(api_router) # health / version / items
+app.include_router(notes_router, prefix="/api")# → app/routers/notes.py
 app.include_router(legacy_router, prefix="/api")
 app.include_router(subclass_router, prefix="/api")
+app.include_router(scan_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 
 
