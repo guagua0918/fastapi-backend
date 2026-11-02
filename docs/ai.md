@@ -510,3 +510,70 @@ pytest 收 test_* → TestClient 打 FastAPI
 - 下次: 若 notes 加上 `mid`，補「不能刪別人的 note」；可考慮獨立 `fastapi_test`。
 
 ---
+
+# W08
+## 1. 本週 Project Goal
+用連線池共用 DB 連線；notes 改 async 等資料庫；搞清楚 I/O vs CPU，以及為什麼 SAM 仍留在 worker。
+
+## 2. 本週完成
+- [x] `psycopg_pool`：同步池給 scan／member／subclass；非同步池給 notes
+- [x] `main.py` lifespan 開關池；Windows 用 SelectorEventLoop
+- [x] notes router／repository 改 `async`；`test_pool_concurrent`；`pytest` 通過
+
+## 3. 問 AI 的三個重要問題
+- [x] Q1 為什麼 upload 不直接跑完 SAM？
+- [x] Q2 連線池滿了，多出來的請求怎樣？
+- [x] Q3 輪詢算 I/O 還是 CPU？若改 WebSocket 差在哪？
+
+### Q1
+- Prompt:
+為什麼不在 `upload_foot` 裡直接把 SAM 跑完再回傳給前端？改成先標 `pending`、另開 CV worker，使用者體驗跟系統各得到什麼、失去什麼？
+- AI 建議摘要:
+SAM 是 CPU bound，塞進上傳 API 會佔住處理該請求的時間，別人的 API 也容易一起卡。改成 pending＋worker：上傳很快結束，分析在背景做；前端用輪詢看進度。得到：網站比較不容易被一張圖拖死、可重試／獨立重開 worker。失去：不能「一個 HTTP 結束就拿到點」；一定要多開 worker、多一次狀態機。
+- 我驗證的方法:
+`upload_foot` 只寫 `input.png` 與 `pending`；`cv_worker.process_one` 才跑 SAM。畫面上會先「分析中」再進確認頁。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用非同步排隊；拒絕在上傳請求裡同步跑完 SAM。
+
+### Q2
+- Prompt:
+`DB_POOL_MAX_SIZE=10` 時，第 11 個也要借連線的請求是被拒絕，還是排隊？跟「網站當掉」差在哪？
+- AI 建議摘要:
+觀念上是**排隊等池子釋出連線**，不是把前 10 個踢掉，也通常不是立刻當整站。等太久才可能連線／請求逾時而失敗。網站當掉比較像行程崩潰、DB 掛了、或同步 CPU 把 event loop 堵死。池子滿＝暫時借不到連線，服務程序多半還在。
+- 我驗證的方法:
+看 `app/core/db.py` 的 `max_size`；`test_pool_concurrent` 並發打 health／notes 仍 200（負載不大時池子夠用）。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用 min=1、max=10 的池；知道滿了是等待不是「擠掉別人」。
+
+### Q3
+- Prompt:
+前端一直 `GET /api/scan/footprints/{fid}` 輪詢，這算 I/O bound 還是 CPU bound？如果改成 WebSocket 由 worker 算完推播，觀念上差在哪？我現在有做 WebSocket 嗎？
+- AI 建議摘要:
+輪詢是 **I/O**：反覆等網路與 DB 讀狀態，幾乎不佔重 CPU。WebSocket 觀念上變成「伺服器有結果再推」，可少打很多次空的 GET，但要維護長連線與推播路徑；worker 仍可不直連瀏覽器，多半是 API 收到 DB 變化再推，或另做通知通道。我目前**沒做** WebSocket，仍用輪詢。
+- 我驗證的方法:
+`scan.js` 的 `pollFootprint`＋`setInterval`；專案裡沒有 WebSocket 路由。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用輪詢；WebSocket 當加分想像，這次不實作。
+
+## 4. Web Concept of the Week
+```text
+I/O（等 DB／網路）→ 池子 + async notes
+CPU（SAM）      → CV worker，不塞 upload API
+瀏覽器 ↔ 只打 FastAPI；worker ↔ 只碰 DB／檔案
+```
+
+## 5. Debugging Record
+- Problem: notes async 測試卡住
+- Error: Psycopg cannot use the ProactorEventLoop
+- Root cause: Windows 預設事件迴圈與 psycopg async 不相容
+- Fix: `main.py`／`conftest.py` 設 `WindowsSelectorEventLoopPolicy`
+
+## 6. Security Check
+- 瀏覽器不直連 worker；資料進出仍經受 JWT 保護的 API
+- 連線字串仍在 `.env`，不進 git
+
+## 7. Reflection (反思)
+這週重點是「等待」與「計算」分開：池／async 管等待；重計算留 worker。
+- 下次: 若要少輪詢，再評估 WebSocket；先維持 pending 狀態機即可。
+
+---

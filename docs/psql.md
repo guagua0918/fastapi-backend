@@ -1841,6 +1841,15 @@ async def list_notes(db: AsyncSession = Depends(get_db)):
 - [ ] 所有端點改為 async 且功能不變
 - [ ] 能解釋「什麼情境下 async 才真的有幫助」（I/O bound vs CPU bound）
 
+### 本週筆記
+- 講義是 SQLAlchemy async＋asyncpg；本專案留 **psycopg**，改接 `psycopg_pool`。
+- **同步池**：`get_connection()` → `ConnectionPool`（scan／member／subclass 沿用）。
+- **非同步池**：notes 改 `async def` + `AsyncConnectionPool`（示範真 await DB）。
+- 池大小：`DB_POOL_MIN_SIZE`／`DB_POOL_MAX_SIZE`（對應講義 `pool_size`／`max_overflow` 觀念）。
+- **何時 async 有用**：等 DB／網路（I/O）時可交錯處理請求；SAM／重 CPU 仍不該塞進 API event loop（繼續放 worker）。
+- 並發：`tests/test_pool_concurrent.py`；啟動時 `main.py` lifespan 開關池。
+- Windows：psycopg async 不能用 ProactorEventLoop，`main.py`／`conftest.py` 改 `WindowsSelectorEventLoopPolicy`。
+
 ---
 
 ## W9：進階查詢：分頁、篩選、搜尋 {#paging}
