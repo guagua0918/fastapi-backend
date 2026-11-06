@@ -1,0 +1,480 @@
+[
+  {
+    "CName": "坐姿短足運動",
+    "EName": "Seated Short Foot Exercise",
+    "purpose": "在不彎曲腳趾的前提下，用足底的小肌肉把足弓輕輕「撐起來」，是所有足弓訓練的入門基礎。",
+    "steps": [
+      "坐在椅子上，赤腳，雙腳平放地面，膝蓋彎曲約 90 度，腳趾朝前。",
+      "放鬆腳趾，讓五根腳趾和腳跟都貼緊地面。",
+      "想像把前腳掌往腳跟方向拉近，讓腳掌變短，足弓像小拱橋一樣微微隆起。",
+      "維持這個收縮約 5 秒，保持正常呼吸。",
+      "慢慢放鬆回到原位，重複動作。",
+      "常見錯誤：用腳趾抓地，或讓腳跟離地來代替足弓收縮。若發生，請減少力量、放慢速度重做。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 10,
+    "hold_seconds": 5,
+    "frequency": "每天 1 次",
+    "dose_note": "各來源差異：每次維持 2–10 秒、每組 8–15 次、2–3 組。此處取中間值作為起始劑量，待治療師確認。",
+    "source_refs": [
+      "https://www.michiganfootdoctors.com/flat-feet-exercises/",
+      "https://www.wellandgood.com/flat-feet-exercises",
+      "https://www.hilliardschools.org/pdf/athletics/hep/Intrinsic-Foot-Basic.pdf",
+      "https://massagetoday.com/mpacms/mt/article.php?id=14746"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "intrinsic",
+      "seated",
+      "none",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "站姿短足運動",
+    "EName": "Standing Short Foot Exercise",
+    "purpose": "把坐姿學會的足弓收縮帶進承重站姿，讓足弓在身體重量下也能主動撐住。",
+    "steps": [
+      "赤腳站立，雙腳約與肩同寬，旁邊有牆或椅背可以扶。",
+      "讓重量平均落在大腳趾根部、小腳趾根部與腳跟三個點上。",
+      "腳趾保持放鬆伸長，不要彎曲，用坐姿時學到的方式把前腳掌往腳跟方向拉近。",
+      "足弓隆起後維持約 5 秒，再慢慢放鬆。",
+      "熟練後可進階成單腳站立做同樣動作，仍需保持腳趾與腳跟貼地。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 10,
+    "hold_seconds": 5,
+    "frequency": "每天 1 次",
+    "dose_note": "建議先熟練坐姿版再進階。單腳版難度更高，來源多為每組 10–15 次；待治療師確認。",
+    "source_refs": [
+      "https://www.michiganfootdoctors.com/flat-feet-exercises/",
+      "https://library.theprehabguys.com/vimeo-video/single-leg-short-foot-wall-support-2/",
+      "https://www.orthofeet.com/blogs/news/foot-exercises-for-flat-feet"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "intrinsic",
+      "standing",
+      "none",
+      "intermediate"
+    ]
+  },
+  {
+    "CName": "毛巾抓握",
+    "EName": "Towel Curl",
+    "purpose": "用腳趾把毛巾往身體方向拉，訓練足底的屈趾肌群與足弓周圍的小肌肉。",
+    "steps": [
+      "坐在椅子上，赤腳，雙腳平放在光滑地面，前方鋪一條小毛巾。",
+      "腳跟固定在地上不要移動，只用腳趾彎曲抓住毛巾。",
+      "慢慢把毛巾往腳跟方向拖，直到毛巾在腳底聚成一團。",
+      "稍作停留後，放鬆腳趾並把毛巾推平，回到起始位置。",
+      "換另一隻腳重複。進階時可在毛巾末端放一個輕的重物增加阻力。",
+      "全程不應該疼痛；若腳底抽筋，請縮短次數、放慢速度，並停止後詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 15,
+    "hold_seconds": null,
+    "frequency": "每天 1 次",
+    "dose_note": "各來源差異大：每腳約 10 次、3 組 15 次，或每腳 3 組各 30 秒。此處取 3 組 15 次，待治療師確認。",
+    "source_refs": [
+      "https://www.michiganfootdoctors.com/flat-feet-exercises/",
+      "https://www.michiganfootdoctors.com/foot-strengthening-exercises-2/",
+      "https://theprehabguys.com/vimeo-video/towel-curl/",
+      "https://www.newsbytesapp.com/news/lifestyle/5-exercises-for-stronger-arches-in-your-feet/story"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "intrinsic",
+      "seated",
+      "towel",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "腳趾分開與大拇趾抬放",
+    "EName": "Toe Spread and Big-Toe Lift (Toe Yoga)",
+    "purpose": "練習讓各根腳趾獨立控制，提升大拇趾與其他腳趾的分工能力，輔助足弓啟動。",
+    "steps": [
+      "坐在椅子上或站立，赤腳，整個腳掌平放地面。",
+      "第一式：把大拇趾往上抬，其他四趾壓住地面，維持約 5 秒。",
+      "第二式：把大拇趾壓住地面，其他四趾往上抬，維持約 5 秒。",
+      "第三式：五根腳趾盡量向外張開，維持約 5 秒後放鬆。",
+      "每個動作都慢慢做，抬起時腳跟與腳掌不要離地。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 10,
+    "hold_seconds": 5,
+    "frequency": "每天 1 次",
+    "dose_note": "來源範圍：1–3 組、每個動作 5–10 次。此處取 3 組 10 次，待治療師確認。",
+    "source_refs": [
+      "https://www.michiganfootdoctors.com/foot-exercises-strengthen-feet/",
+      "https://thewearify.com/how-to-strengthen-flat-feet/"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "intrinsic",
+      "seated",
+      "standing",
+      "none",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "腳趾夾彈珠",
+    "EName": "Marble Pickup",
+    "purpose": "透過腳趾夾取小物，練習足底小肌肉的細緻控制，趣味性高，適合兒童與家長一起做。",
+    "steps": [
+      "坐在椅子上，赤腳，地上放約 10–15 顆彈珠和一個小碗。",
+      "腳跟固定在地面，只用腳趾夾起一顆彈珠。",
+      "把彈珠移到碗裡放下，過程中盡量不要移動整隻腳。",
+      "重複直到彈珠夾完，再換另一隻腳。",
+      "彈珠容易滑掉時，可以先改用小毛巾或布球練習。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 1,
+    "reps": null,
+    "hold_seconds": null,
+    "frequency": "每天 1 次",
+    "dose_note": "來源只描述「夾完所有彈珠」，沒有明確次數，需治療師確認適合的量。",
+    "source_refs": [
+      "https://thewearify.com/how-to-strengthen-flat-feet/",
+      "https://www.auh.org.tw/NewsInfo/HealthEducationInfo?docid=362"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "intrinsic",
+      "seated",
+      "marble",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "雙腳提踵",
+    "EName": "Double-Leg Heel Raise",
+    "purpose": "強化小腿肌群與後脛肌，幫助站立與行走時穩住內側足弓。",
+    "steps": [
+      "站立，雙腳與髖同寬，前方扶牆或椅背保持平衡。",
+      "慢慢把腳跟抬高，重量落在大腳趾與前腳掌，腳踝不要往外倒。",
+      "在最高點停留約 2 秒。",
+      "用約 3–4 秒慢慢放下腳跟，回到起始位置。",
+      "動作全程保持膝蓋伸直、身體不前後晃動。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 10,
+    "hold_seconds": 2,
+    "frequency": "每週 3–4 天",
+    "dose_note": "來源範圍：2–3 組、每組 10–15 次，每週至少 3–4 天。此處取 3 組 10 次，待治療師確認。",
+    "source_refs": [
+      "https://www.wellandgood.com/flat-feet-exercises",
+      "https://carepatron.com/files/tibialis-posterior-exercises-handout.pdf",
+      "https://thewearify.com/how-to-strengthen-flat-feet/"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "calf_tibpost",
+      "standing",
+      "none",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "單腳提踵",
+    "EName": "Single-Leg Heel Raise",
+    "purpose": "在單腳負重下訓練小腿與後脛肌，是雙腳提踵的進階版，也貼近本系統的動態評估動作。",
+    "steps": [
+      "單腳站立，另一腳輕輕抬起，旁邊扶牆維持平衡。",
+      "慢慢把腳跟抬到最高，跟骨保持垂直向上，不要往外翻。",
+      "在最高點停留約 2 秒。",
+      "用約 3 秒慢慢放下。完成一側後換另一腳。",
+      "太困難時，先退回雙腳提踵。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 10,
+    "hold_seconds": 2,
+    "frequency": "每週 3–4 天",
+    "dose_note": "來源範圍：每腳 3 組、每組 10–15 次。建議先能穩定完成雙腳提踵再進階，待治療師確認。",
+    "source_refs": [
+      "https://www.michiganfootdoctors.com/foot-strengthening-routine/",
+      "https://carepatron.com/files/tibialis-posterior-exercises-handout.pdf"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "calf_tibpost",
+      "balance",
+      "standing",
+      "none",
+      "advanced"
+    ]
+  },
+  {
+    "CName": "離心提踵（慢速下放）",
+    "EName": "Eccentric Heel Lowering",
+    "purpose": "強調「慢慢放下」的階段，訓練後脛肌與小腿在下降時控制足弓不塌的能力。",
+    "steps": [
+      "站在階梯邊緣，前腳掌踩階，腳跟懸空，旁邊扶牆。",
+      "雙腳一起踮起腳跟到最高點。",
+      "把重量移到單腳上，用約 3–4 秒慢慢把腳跟往下放到低於階面。",
+      "放下時注意跟骨垂直，不要往外倒。",
+      "回到最高點時用雙腳協助上去，重複動作，再換另一腳。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 10,
+    "hold_seconds": null,
+    "frequency": "每天 1 次，或隔天 1 次",
+    "dose_note": "來源範圍：3 組、每組 10–15 次。另有針對阿基里斯腱病變的每日兩次高量方案，不適用本系統，已排除。待治療師確認。",
+    "source_refs": [
+      "https://www.beaconortho.com/wp-content/uploads/Ankle-Shin-Splints-HEP.pdf",
+      "https://www.michiganfootdoctors.com/flat-feet-exercises/",
+      "https://edh.tw/articles/5d14fy1/5"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "calf_tibpost",
+      "standing",
+      "stairs",
+      "advanced"
+    ]
+  },
+  {
+    "CName": "彈力帶足內翻",
+    "EName": "Resistance Band Foot Inversion",
+    "purpose": "對抗彈力帶阻力把腳掌往內轉，直接訓練後脛肌，這條肌肉是支撐內側足弓的重要角色。",
+    "steps": [
+      "坐在地上，雙腿前伸，把彈力帶繞過一隻腳的前腳掌，另一端固定在穩定處或請人拉住。",
+      "讓腳踩在中立位置，腳掌朝上。",
+      "對抗彈力帶，把腳掌往內轉（腳底朝向另一隻腳），在動作末端停 3 秒。",
+      "慢慢回到起始位置，不要讓彈力帶彈回去。",
+      "完成次數後換腳。先從最輕的彈力帶開始。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 15,
+    "hold_seconds": 3,
+    "frequency": "每天 1 次",
+    "dose_note": "來源範圍：2–3 組、每組 10–15 次、末端停 3 秒。此處取 3 組 15 次，待治療師確認。",
+    "source_refs": [
+      "https://www.michiganfootdoctors.com/flat-feet-exercises/",
+      "https://www.beaconortho.com/wp-content/uploads/Ankle-Shin-Splints-HEP.pdf"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "calf_tibpost",
+      "seated",
+      "band",
+      "intermediate"
+    ]
+  },
+  {
+    "CName": "蚌殼式",
+    "EName": "Clamshell",
+    "purpose": "強化臀中肌與髖外旋肌群，幫助骨盆與膝蓋保持穩定，避免膝蓋內夾帶動足弓塌陷。",
+    "steps": [
+      "側躺，頭靠在手臂上，雙腳與髖部上下疊好，膝蓋彎曲。",
+      "雙腳腳跟保持併攏，骨盆不要往後翻。",
+      "把上面那側膝蓋像蚌殼打開一樣往上抬，維持約 2 秒。",
+      "慢慢放回起始位置，不要讓骨盆跟著晃動。",
+      "完成次數後換另一側。進階時可在膝蓋上方套彈力帶。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 10,
+    "hold_seconds": 2,
+    "frequency": "每週 2–3 天",
+    "dose_note": "來源範圍：2–3 組、每側每組 10–15 次，也有從每組 3 次逐步增加的建議。每週 2–3 天，待治療師確認。",
+    "source_refs": [
+      "https://www.uwinnipeg.ca/athletic-therapy-centre/docs/hip-series.pdf",
+      "https://merckmanuals.com/home/multimedia/video/side-lying-hip-external-rotation-clamshell-exercise",
+      "https://fitandwell.com/how-to/clamshells"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "hip",
+      "sidelying",
+      "none",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "單腳站立",
+    "EName": "Single-Leg Stance",
+    "purpose": "訓練單腳支撐時的平衡與身體控制，是足部、踝關節與髖部協調的基礎。",
+    "steps": [
+      "靠近牆邊站好，必要時可以隨時伸手扶牆。",
+      "把一隻腳抬起，膝蓋彎曲約 90 度，眼睛看前方固定一點。",
+      "維持骨盆水平、身體不要歪向一側，持續約 30 秒。",
+      "放下腳，換另一隻腳。",
+      "進階：改閉眼，或站在軟墊上，一次只增加一種難度。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 1,
+    "hold_seconds": 30,
+    "frequency": "每週 3–4 天",
+    "dose_note": "來源：每側維持 30 秒，3 次或 3 組，每週 3–4 天；也有 30–60 秒的建議。待治療師確認。",
+    "source_refs": [
+      "https://recsports.ufl.edu/wp-content/uploads/2020/05/CAI-Exercises.pdf",
+      "https://www.michiganfootdoctors.com/foot-strengthening-routine/"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "balance",
+      "hip",
+      "standing",
+      "none",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "單腳站立維持足弓",
+    "EName": "Single-Leg Balance with Arch Activation",
+    "purpose": "在單腳站立時主動維持足弓收縮，訓練神經系統在日常動作中自動啟動足弓。",
+    "steps": [
+      "赤腳站在堅硬平面，靠近牆邊以便隨時扶牆。",
+      "先用站姿短足運動的方式讓足弓隆起，腳趾保持伸長不彎曲。",
+      "保持足弓隆起的同時，慢慢把另一隻腳抬離地面。",
+      "維持平衡 30–60 秒，期間不要讓足弓塌下去，大腳趾根部也不要離地。",
+      "放下後換另一側。進階時可閉眼，或改站軟墊，一次只加一種難度。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 3,
+    "reps": 1,
+    "hold_seconds": 30,
+    "frequency": "每週 3–4 天",
+    "dose_note": "來源範圍：每側 30–60 秒、3 組。此處取下限 30 秒，待治療師確認。",
+    "source_refs": [
+      "https://www.michiganfootdoctors.com/flat-feet-exercises/",
+      "https://library.theprehabguys.com/vimeo-video/single-leg-short-foot-hold-band/"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "balance",
+      "intrinsic",
+      "standing",
+      "none",
+      "advanced"
+    ]
+  },
+  {
+    "CName": "腓腸肌牆邊伸展（膝蓋伸直）",
+    "EName": "Gastrocnemius Wall Stretch",
+    "purpose": "放鬆小腿後側外層肌肉。小腿太緊會限制腳踝活動並增加足弓負擔。",
+    "steps": [
+      "面對牆站立，雙手扶牆。要伸展的腳往後踏一步，另一腳在前。",
+      "後腳腳尖朝前、腳跟貼地，後腳膝蓋保持伸直。",
+      "身體慢慢往牆的方向靠，直到後腳小腿有拉伸感，但腳跟不離地。",
+      "維持約 30 秒，不要彈震。",
+      "放鬆後再重複，完成後換腳。",
+      "感覺舒服的拉伸即可；若疼痛請停止並詢問物理治療師。"
+    ],
+    "sets": 1,
+    "reps": 3,
+    "hold_seconds": 30,
+    "frequency": "每天 2 次",
+    "dose_note": "來源範圍：每次維持 30 秒、重複 3–5 次、每天 2 次。小腿腫脹發紅發熱時不要伸展，請就醫。待治療師確認。",
+    "source_refs": [
+      "https://www.beaconortho.com/wp-content/uploads/Ankle-Sprain-HEP.pdf",
+      "https://roh.nhs.uk/services-information/foot-and-ankle/calf-stretching",
+      "https://www.msdmanuals.com/home/multimedia/video/standing-gastrocnemius-stretch"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "stretch",
+      "standing",
+      "none",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "比目魚肌牆邊伸展（膝蓋彎曲）",
+    "EName": "Soleus Wall Stretch",
+    "purpose": "放鬆小腿深層的比目魚肌，與膝蓋伸直的小腿伸展搭配，讓整個小腿後側都能放鬆。",
+    "steps": [
+      "面對牆站立，雙手扶牆，要伸展的腳稍微在後，雙腳腳尖朝前、腳跟貼地。",
+      "兩個膝蓋都微彎，把骨盆往前送。",
+      "感覺小腿下半部、靠近腳踝上方有拉伸感，腳跟不離地。",
+      "維持約 30 秒，不要彈震。",
+      "放鬆後再重複，完成後換腳。",
+      "感覺舒服的拉伸即可；若疼痛請停止並詢問物理治療師。"
+    ],
+    "sets": 1,
+    "reps": 3,
+    "hold_seconds": 30,
+    "frequency": "每天 2 次",
+    "dose_note": "來源範圍：每次維持 30 秒、重複 3–5 次、每天 2 次。待治療師確認。",
+    "source_refs": [
+      "https://www.beaconortho.com/wp-content/uploads/Ankle-Sprain-HEP.pdf",
+      "https://www.shropscommunityhealth.nhs.uk/content/doclib/13861.pdf"
+    ],
+    "video_path": null,
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "stretch",
+      "standing",
+      "none",
+      "beginner"
+    ]
+  },
+  {
+    "CName": "足底滾球放鬆",
+    "EName": "Foot Arch Ball Roll",
+    "purpose": "用小球按摩足底，緩解足底緊繃與疲勞，可放在訓練前或訓練後。",
+    "steps": [
+      "坐在穩固的椅子上，赤腳，把高爾夫球或按摩小球放在腳底。",
+      "輕輕踩住球，用腳底從腳跟到足弓中段來回滾動。",
+      "力道以舒服的壓力為準，不要用力壓到疼痛。",
+      "每隻腳滾動約 2 分鐘，再換另一腳。",
+      "全程不應該疼痛；若出現刺痛或明顯不適，請停止並詢問物理治療師。"
+    ],
+    "sets": 1,
+    "reps": 1,
+    "hold_seconds": null,
+    "frequency": "每天 1 次",
+    "dose_note": "各來源時間不同：2 分鐘到 3–5 分鐘。此動作較常見於足底筋膜緊繃的衛教，對扁平足矯正的直接證據較弱，只當作放鬆輔助；待治療師確認。",
+    "source_refs": [
+      "https://iris.hattiesburgclinic.com/patadv/aha/aha_archpain_rex.htm",
+      "https://www.scribd.com/document/887430708/Ankle"
+    ],
+    "video_path": "https://youtu.be/Pl3Sr24W9OM",
+    "reviewed": 0,
+    "picture": null,
+    "categories": [
+      "stretch",
+      "seated",
+      "ball",
+      "beginner"
+    ]
+  }
+]

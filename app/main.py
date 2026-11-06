@@ -20,6 +20,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.core.db import close_async_pool, close_sync_pool, init_async_pool, init_sync_pool
 from app.routers.auth import router as auth_router
 from app.routers.notes import legacy_router, router as notes_router
+from app.routers.objectlist import router as objectlist_router
 from app.routers.scan import router as scan_router
 from app.routers.subclass import router as subclass_router
 
@@ -120,6 +121,7 @@ app.include_router(api_router) # health / version / items
 app.include_router(notes_router, prefix="/api")# → app/routers/notes.py
 app.include_router(legacy_router, prefix="/api")
 app.include_router(subclass_router, prefix="/api")
+app.include_router(objectlist_router, prefix="/api")
 app.include_router(scan_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 

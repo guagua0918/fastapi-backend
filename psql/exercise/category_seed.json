@@ -1,0 +1,121 @@
+[
+  {
+    "group": "goal",
+    "code": "intrinsic",
+    "CName": "足內在肌訓練",
+    "EName": "Intrinsic Foot Muscles",
+    "sort_order": 1
+  },
+  {
+    "group": "goal",
+    "code": "calf_tibpost",
+    "CName": "小腿與後脛肌強化",
+    "EName": "Calf & Tibialis Posterior",
+    "sort_order": 2
+  },
+  {
+    "group": "goal",
+    "code": "hip",
+    "CName": "髖部穩定",
+    "EName": "Hip Stability",
+    "sort_order": 3
+  },
+  {
+    "group": "goal",
+    "code": "balance",
+    "CName": "平衡與控制",
+    "EName": "Balance & Control",
+    "sort_order": 4
+  },
+  {
+    "group": "goal",
+    "code": "stretch",
+    "CName": "伸展放鬆",
+    "EName": "Stretch & Relax",
+    "sort_order": 5
+  },
+  {
+    "group": "position",
+    "code": "seated",
+    "CName": "坐姿",
+    "EName": "Seated",
+    "sort_order": 1
+  },
+  {
+    "group": "position",
+    "code": "standing",
+    "CName": "站姿",
+    "EName": "Standing",
+    "sort_order": 2
+  },
+  {
+    "group": "position",
+    "code": "sidelying",
+    "CName": "側躺",
+    "EName": "Side-lying",
+    "sort_order": 3
+  },
+  {
+    "group": "equipment",
+    "code": "none",
+    "CName": "徒手（可扶牆）",
+    "EName": "No Equipment",
+    "sort_order": 1
+  },
+  {
+    "group": "equipment",
+    "code": "towel",
+    "CName": "毛巾",
+    "EName": "Towel",
+    "sort_order": 2
+  },
+  {
+    "group": "equipment",
+    "code": "band",
+    "CName": "彈力帶",
+    "EName": "Resistance Band",
+    "sort_order": 3
+  },
+  {
+    "group": "equipment",
+    "code": "marble",
+    "CName": "彈珠與小碗",
+    "EName": "Marbles & Bowl",
+    "sort_order": 4
+  },
+  {
+    "group": "equipment",
+    "code": "stairs",
+    "CName": "階梯",
+    "EName": "Step",
+    "sort_order": 5
+  },
+  {
+    "group": "equipment",
+    "code": "ball",
+    "CName": "按摩球或高爾夫球",
+    "EName": "Massage Ball",
+    "sort_order": 6
+  },
+  {
+    "group": "level",
+    "code": "beginner",
+    "CName": "入門",
+    "EName": "Beginner",
+    "sort_order": 1
+  },
+  {
+    "group": "level",
+    "code": "intermediate",
+    "CName": "中階",
+    "EName": "Intermediate",
+    "sort_order": 2
+  },
+  {
+    "group": "level",
+    "code": "advanced",
+    "CName": "進階",
+    "EName": "Advanced",
+    "sort_order": 3
+  }
+]
