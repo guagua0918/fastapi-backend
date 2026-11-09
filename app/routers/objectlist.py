@@ -1,16 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.security import get_current_member
 from app.repositories import objectlist as objectlist_repo
-from app.schemas.objectlist import ObjectDetail, ObjectListItem
+from app.schemas.objectlist import ObjectDetail, ObjectListPage
 
 router = APIRouter(tags=["objectlist"], dependencies=[Depends(get_current_member)])
 
 
-@router.get("/objectlist/cid/{cid}", response_model=list[ObjectListItem])
-def get_objectlist(cid: int) -> list[dict]:
-    """講義：click 目錄 → SELECT * FROM vd_objectlist WHERE cid = {cid}"""
-    return objectlist_repo.list_by_cid(cid)
+@router.get("/objectlist/cid/{cid}", response_model=ObjectListPage)
+def get_objectlist(
+    cid: int,
+    q: str | None = Query(None, description="關鍵字（title/des ILIKE）"),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+) -> dict:
+    """W09：reuse vd_objectlist；動態 q／page／size 在 FastAPI 參數化查詢。"""
+    return objectlist_repo.list_by_cid_page(cid, q=q, page=page, size=size)
 
 
 @router.get("/object/oid/{oid}", response_model=ObjectDetail)

@@ -15,6 +15,16 @@ class ObjectListItem(BaseModel):
     picture: str | None = None
 
 
+class ObjectListPage(BaseModel):
+    """W09：分頁＋篩選／搜尋回傳格式（對齊講義 courses）。"""
+
+    items: list[ObjectListItem]
+    total: int
+    page: int
+    size: int
+    total_pages: int
+
+
 class ObjectDetail(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

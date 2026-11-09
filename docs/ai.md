@@ -584,7 +584,8 @@ CPU（SAM）      → CV worker，不塞 upload API
 
 ## 2. 本週完成
 - [x] `vd_objectlist`／`vd_object`；`GET /api/objectlist/cid/{cid}`、`GET /api/object/oid/{oid}`
-- [x] 運動頁：目錄 `<select>` 篩選＋關鍵字＋autocomplete；多條件以 oid 交集
+- [x] W09 分頁／搜尋：`?q=&page=&size=` → `{items,total,page,size,total_pages}`；`ILIKE` 參數化；`offset=(page-1)*size`
+- [x] 運動頁改打後端分頁＋關鍵字；多目錄條件仍可前端交集
 - [x] 詳情步驟／YouTube iframe；列表縮圖（有影片用 YouTube thumb）
 
 ## 3. 問 AI 的三個重要問題
@@ -598,9 +599,9 @@ CPU（SAM）      → CV worker，不塞 upload API
 - AI 建議摘要:
 十幾筆可前端過濾，實作快、可重用已載入的 objectlist。資料變多、還要跟權限／分頁一起查，就改 API／DB 的 `ILIKE`，用參數化（`%s`），不要把字串拼進 SQL。`ILIKE '%x%'` 大量時可能較慢，但先求正確與安全。
 - 我驗證的方法:
-運動頁進頁打 `objectlist` 約 15 筆；輸入關鍵字在 JS 對 `title`／`des` 過濾即可看到結果，沒另開 search API。
+後來補上 API：`GET /api/objectlist/cid/5?q=提踵` 用 `ILIKE` 參數化，回傳的 `total`／`items` 與手動 SQL 一致；運動頁搜尋改帶 `q`。
 - 最後我採用 / 修改 / 拒絕了什麼:
-採用前端關鍵字過濾；拒絕再為搜尋重寫一套自訂 search endpoint。之後資料變多再搬到 `ILIKE`。
+採用「VIEW 固定形狀＋API 動態 `q`／分頁」；關鍵字下推 PostgreSQL，不再只靠前端過濾。
 
 ### Q2
 - Prompt:
@@ -618,9 +619,9 @@ AND 語意＝該 oid 在兩個 cid 的 `co` 都出現。多次 objectlist＋前�
 - AI 建議摘要:
 `offset = (page - 1) * size`；排序要固定。頁很深時 OFFSET 常變慢，中間增刪資料也可能讓頁面位移。無限捲動適合 Keyset（`WHERE id > last ORDER BY id LIMIT n`）。運動頁資料少可先不分頁；清單變長再在 API 做分頁，不要只切前端陣列假裝分完。
 - 我驗證的方法:
-對照講義公式；目前運動列表一次載入全部，UI 沒有 page 控制項。
+`page=1&size=5` → OFFSET 0；`page=2` → OFFSET 5；回傳 `total=15`、`total_pages=3`。運動頁有上一頁／下一頁。
 - 最後我採用 / 修改 / 拒絕了什麼:
-這次不上分頁；觀念上先記住 OFFSET 與 Keyset 差異，之後資料量上來再補 API。
+採用 OFFSET 分頁（資料量小）；Keyset 先記觀念，這次不實作。
 
 ## 4. Web Concept of the Week
 ```text
@@ -641,7 +642,7 @@ Injection：使用者輸入只當參數值，不拼進 SQL 字串
 - 若日後 keyword 進 SQL，必須參數化；不可字串拼接
 
 ## 7. Reflection (反思)
-W09 核心是「查詢放哪一層」：VIEW 管穩定形狀，動態條件與分頁多半在 API；資料很少時前端先做可以，但要知道何時該下推。
-- 下次: 列表變長時補 API 分頁＋（可選）`ILIKE`；多條件可改成單次 SQL 減少往返。
+W09 核心是「查詢放哪一層」：VIEW（`vd_objectlist`）管穩定形狀；`q`／`page`／`size` 在 API 參數化查詢。
+- 下次: 多目錄 AND 也可下推成單次 SQL；若要交 EXPLAIN 再對 `vd_objectlist` 跑一次比較。
 
 ---
