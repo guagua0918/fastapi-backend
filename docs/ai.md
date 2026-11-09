@@ -577,3 +577,71 @@ CPU（SAM）      → CV worker，不塞 upload API
 - 下次: 若要少輪詢，再評估 WebSocket；先維持 pending 狀態機即可。
 
 ---
+
+# W09
+## 1. 本週 Project Goal
+運動教學用進階查詢觀念：目錄篩選、關鍵字搜尋；重用 `vd_subclass`／`vd_objectlist`，並搞清楚查詢該放前端、API 還是 PostgreSQL，以及分頁何時需要。
+
+## 2. 本週完成
+- [x] `vd_objectlist`／`vd_object`；`GET /api/objectlist/cid/{cid}`、`GET /api/object/oid/{oid}`
+- [x] 運動頁：目錄 `<select>` 篩選＋關鍵字＋autocomplete；多條件以 oid 交集
+- [x] 詳情步驟／YouTube iframe；列表縮圖（有影片用 YouTube thumb）
+
+## 3. 問 AI 的三個重要問題
+- [x] Q1 關鍵字要比對標題，前端過濾還是 PostgreSQL `ILIKE`？
+- [x] Q2 多目錄條件要「兩個都符合」時，多次 objectlist 交集還是後端一條 SQL？
+- [x] Q3 分頁的 OFFSET 怎麼算？資料很多時有什麼問題？運動頁現在要不要上分頁？
+
+### Q1
+- Prompt:
+關鍵字要比對標題，我該在前端過濾，還是讓 PostgreSQL 用 `ILIKE`？兩邊各自適合什麼資料量？我現在運動列表只有十幾筆，選哪邊比較合理，之後變多要怎麼改？
+- AI 建議摘要:
+十幾筆可前端過濾，實作快、可重用已載入的 objectlist。資料變多、還要跟權限／分頁一起查，就改 API／DB 的 `ILIKE`，用參數化（`%s`），不要把字串拼進 SQL。`ILIKE '%x%'` 大量時可能較慢，但先求正確與安全。
+- 我驗證的方法:
+運動頁進頁打 `objectlist` 約 15 筆；輸入關鍵字在 JS 對 `title`／`des` 過濾即可看到結果，沒另開 search API。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用前端關鍵字過濾；拒絕再為搜尋重寫一套自訂 search endpoint。之後資料變多再搬到 `ILIKE`。
+
+### Q2
+- Prompt:
+一個動作會掛在好幾個目錄。使用者同時選兩個條件、「必須兩個都符合」要怎麼查？多次打 objectlist 再交集，跟後端一條 SQL 動態 WHERE，我該怎麼選？參數化要守什麼才不會被注入？
+- AI 建議摘要:
+AND 語意＝該 oid 在兩個 cid 的 `co` 都出現。多次 objectlist＋前端交集：API 單純、符合 reuse view，但多次往返、難做 total／分頁。一條 SQL（例如多個 `EXISTS ... cid = %s`）適合一次查完與分頁；使用者輸入只當參數值，欄位名若動態要用白名單。
+- 我驗證的方法:
+選兩個篩選後 Network 會看到多次 `/api/objectlist/cid/...`，結果是兩邊都有的動作；只選一個則等同單一目錄列表。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用多次 objectlist 交集以 reuse 現有 API；動態 SQL 當之後要分頁／放大資料量再考慮。
+
+### Q3
+- Prompt:
+講義分頁要回 total、page、size。OFFSET 怎麼算？資料上到很多頁之後用 OFFSET 可能怎樣？什麼情況改用 Keyset／cursor？我的運動頁現在要不要上分頁？
+- AI 建議摘要:
+`offset = (page - 1) * size`；排序要固定。頁很深時 OFFSET 常變慢，中間增刪資料也可能讓頁面位移。無限捲動適合 Keyset（`WHERE id > last ORDER BY id LIMIT n`）。運動頁資料少可先不分頁；清單變長再在 API 做分頁，不要只切前端陣列假裝分完。
+- 我驗證的方法:
+對照講義公式；目前運動列表一次載入全部，UI 沒有 page 控制項。
+- 最後我採用 / 修改 / 拒絕了什麼:
+這次不上分頁；觀念上先記住 OFFSET 與 Keyset 差異，之後資料量上來再補 API。
+
+## 4. Web Concept of the Week
+```text
+VIEW：固定 JOIN／語意（vd_objectlist）— 不會自動分頁或動態 keyword
+API：可動態 WHERE + LIMIT/OFFSET（之後若要）
+前端：資料少時可先篩選／交集；資料多應下推 DB
+Injection：使用者輸入只當參數值，不拼進 SQL 字串
+```
+
+## 5. Debugging Record
+- Problem: 曾做自訂 `/api/exercise/search`，與講義「reuse subclass／objectlist」不一致
+- Error: （設計／驗收方向偏離，非執行錯誤）
+- Root cause: 為搜尋另開 API，沒先走 view＋既有端點
+- Fix: 改回 `vd_objectlist`＋`/api/objectlist`；關鍵字與多條件先在前端處理
+
+## 6. Security Check
+- objectlist／object 仍走登入保護的 API
+- 若日後 keyword 進 SQL，必須參數化；不可字串拼接
+
+## 7. Reflection (反思)
+W09 核心是「查詢放哪一層」：VIEW 管穩定形狀，動態條件與分頁多半在 API；資料很少時前端先做可以，但要知道何時該下推。
+- 下次: 列表變長時補 API 分頁＋（可選）`ILIKE`；多條件可改成單次 SQL 減少往返。
+
+---
