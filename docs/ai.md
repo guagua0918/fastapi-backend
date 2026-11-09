@@ -646,3 +646,70 @@ W09 核心是「查詢放哪一層」：VIEW（`vd_objectlist`）管穩定形狀
 - 下次: 多目錄 AND 也可下推成單次 SQL；若要交 EXPLAIN 再對 `vd_objectlist` 跑一次比較。
 
 ---
+
+# W10
+## 1. 本週 Project Goal
+統一錯誤 JSON、請求 Logging middleware，未預期例外不把 stack 洩給前端。
+
+## 2. 本週完成
+- [x] `AppException`＋handler；`HTTPException` 也改成同一 `{error, path}` 形狀
+- [x] 全域 `Exception` handler：log `exception`，回應固定 `Internal server error`
+- [x] `RequestLoggingMiddleware`：method／path／status／耗時
+- [x] log 同時到 console 與 `logs/app.log`（gitignore）
+- [x] objectlist 404 改 `AppException`；`tests/test_w10_errors.py` 通過
+
+## 3. 問 AI 的三個重要問題
+- [x] Q1 為什麼 500 不能把 traceback 回給瀏覽器？
+- [x] Q2 為什麼還要幫 `HTTPException` 寫 handler，不只做 `AppException`？
+- [x] Q3 middleware 記的「耗時」大概從哪量到哪？
+
+### Q1
+- Prompt:
+未預期例外時，為什麼回應只要固定「Internal server error」，詳細錯誤只寫進 log？
+- AI 建議摘要:
+traceback／檔名／SQL 可能洩漏結構或密鑰線索，方便攻擊。對使用者只要知道失敗；開發者看 `logs/app.log` 的 `logger.exception`。
+- 我驗證的方法:
+`test_unhandled_exception_hides_details`：回傳無 `RuntimeError`／secret 字串，status 500。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用隱藏細節；拒絕把 exception 字串直接當 JSON error。
+
+### Q2
+- Prompt:
+專案很多地方仍 `raise HTTPException`，為什麼還要註冊 HTTPException handler？
+- AI 建議摘要:
+一次改完全部 raise 成本高。用 handler 把既有 HTTPException 轉成與 AppException 相同的 `{error, path}`，格式先統一；新程式可逐步改 `AppException`。
+- 我驗證的方法:
+未登入打 `/api/auth/me` → 401 且 body 有 `error`／`path`。
+- 最後我採用 / 修改 / 拒絕了什麼:
+兩種例外並存；objectlist 當 AppException 範例。
+
+### Q3
+- Prompt:
+請求 logging middleware 的秒數是在量什麼？
+- AI 建議摘要:
+從進入 middleware、呼叫 `call_next` 前後用 `perf_counter` 差分，大致含路由＋依賴＋DB／業務時間（外層還有 Session 等）。用來找慢請求，不是精準 APM。
+- 我驗證的方法:
+打 `/api/health` 後 console／`logs/app.log` 出現 `GET /api/health 200 0.xxxs`。
+- 最後我採用 / 修改 / 拒絕了什麼:
+採用 INFO 記成功請求；例外路徑先 ERROR 再交 exception handler。
+
+## 4. Web Concept of the Week
+```text
+AppException／HTTPException → {error, path}
+未預期 Exception → log stack；對外固定 500 文案
+Middleware：METHOD path status duration
+```
+
+## 5. Debugging Record
+- Problem: 講義範例 `Status_code`／`from FastAPI import` 大小寫不正確
+- Fix: 依正式 FastAPI 寫 `status_code`、`fastapi.Request`／`JSONResponse`
+
+## 6. Security Check
+- 500 不回 traceback
+- `logs/` 不進 git（可能含路徑／查詢訊息）
+
+## 7. Reflection (反思)
+W10 是「給人看的錯誤」跟「給維運看的 log」分開。
+- 下次: 其餘 router 可逐步改 `AppException`；ValidationError 若要同形狀再加 handler。
+
+---

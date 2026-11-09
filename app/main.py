@@ -17,7 +17,17 @@ from starlette.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
+from fastapi import HTTPException as FastAPIHTTPException
+
 from app.core.db import close_async_pool, close_sync_pool, init_async_pool, init_sync_pool
+from app.core.exceptions import (
+    AppException,
+    app_exception_handler,
+    http_exception_handler,
+    unhandled_exception_handler,
+)
+from app.core.logging_config import setup_logging
+from app.core.request_logging import RequestLoggingMiddleware
 from app.routers.auth import router as auth_router
 from app.routers.notes import legacy_router, router as notes_router
 from app.routers.objectlist import router as objectlist_router
@@ -25,6 +35,7 @@ from app.routers.scan import router as scan_router
 from app.routers.subclass import router as subclass_router
 
 load_dotenv()
+setup_logging()
 
 # 可選：IIS 子路徑（影響 OpenAPI servers 顯示）；Swagger 已用相對路徑抓 openapi.json
 ROOT_PATH = os.getenv("ROOT_PATH", "").rstrip("/")
@@ -50,6 +61,14 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     lifespan=lifespan,
 )
+
+# W10：統一錯誤回應（AppException／HTTPException／未預期）
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(FastAPIHTTPException, http_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
+
+# 後加的 middleware 較外層；請求 log 包住整段處理時間
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ["SESSION_SECRET_KEY"],

@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.core.exceptions import AppException
 from app.core.security import get_current_member
 from app.repositories import objectlist as objectlist_repo
 from app.schemas.objectlist import ObjectDetail, ObjectListPage
@@ -23,5 +24,6 @@ def get_object(oid: int) -> dict:
     """講義：vd_object 取得物件詳情"""
     row = objectlist_repo.get_by_oid(oid)
     if not row:
-        raise HTTPException(status_code=404, detail="找不到這個物件")
+        # W10：業務錯誤改 AppException（格式與 HTTPException handler 相同）
+        raise AppException(404, "找不到這個物件")
     return row
