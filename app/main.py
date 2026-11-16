@@ -29,6 +29,7 @@ from app.core.exceptions import (
 from app.core.logging_config import setup_logging
 from app.core.request_logging import RequestLoggingMiddleware
 from app.routers.auth import router as auth_router
+from app.routers.menu import router as menu_router
 from app.routers.notes import legacy_router, router as notes_router
 from app.routers.objectlist import router as objectlist_router
 from app.routers.scan import router as scan_router
@@ -141,6 +142,7 @@ app.include_router(notes_router, prefix="/api")# → app/routers/notes.py
 app.include_router(legacy_router, prefix="/api")
 app.include_router(subclass_router, prefix="/api")
 app.include_router(objectlist_router, prefix="/api")
+app.include_router(menu_router, prefix="/api")
 app.include_router(scan_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 
