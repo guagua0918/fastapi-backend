@@ -712,4 +712,7 @@ Middleware：METHOD path status duration
 W10 是「給人看的錯誤」跟「給維運看的 log」分開。
 - 下次: 其餘 router 可逐步改 `AppException`；ValidationError 若要同形狀再加 handler。
 
+## 8. 講義 §13 七題
+答案與 `psql.md` W10「#### 本週筆記（足弓／錯誤處理與 Logging）」同一份，不另寫第二套。
+
 ---

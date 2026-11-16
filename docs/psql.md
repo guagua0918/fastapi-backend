@@ -1726,8 +1726,2031 @@ ORDER BY cid;
 
 ---
 
+---
+
+## W07 :EER Model and AI Gen Data {#EER}
+EER設計與AI產生測資
+
+### AI Chat問清楚設計
+開始前先準備好大量測試資料，AI coding可以幫大忙：
+> # Postgresql
+> 根據EER設計，大部分entity tables可以繼承object, e.g. member, course, section。根據大學現況，faculty, staff, student can inherit from member. 請修改academic.sql依此設計簡易教務系統DB，給我academic_EER.sql
+
+```EER of Object
+Object (oid)
+│
+├── Member (oid PK/FK)
+│   ├── Faculty (oid PK/FK)
+│   ├── Staff   (oid PK/FK)
+│   └── Student (oid PK/FK)
+│
+├── Department (oid PK/FK)
+├── Semester   (oid PK/FK)
+├── Course     (oid PK/FK)
+└── Section    (oid PK/FK)
+```
+
+```sql
+CREATE SCHEMA IF NOT EXISTS academic_eer;   -- Isolated schema for EER tables, views, and functions.
+SET search_path TO academic_eer, public;    -- Use academic_eer first, then public schema.
+
+-- ===== 1. Original generic class/object model (preserved) =====
+CREATE TABLE IF NOT EXISTS class (...)
+...
+
+CREATE OR REPLACE VIEW vd_section_roster AS
+SELECT sec.oid AS section_oid, co.course_code, co.course_name,
+       sem.academic_year, sem.term, sec.section_no,
+       st.student_no, m.full_name AS student_name,
+       e.status AS enrollment_status, e.final_grade
+FROM ss e
+JOIN section sec ON sec.oid=e.section_oid
+JOIN course co ON co.oid=sec.course_oid
+JOIN semester sem ON sem.oid=sec.semester_oid
+JOIN student st ON st.oid=e.student_oid
+JOIN member m ON m.oid=st.oid;
+
+COMMIT;
+```
+
+```shell
+psql -U postgres -d postgres -v DBName=fastapi_dev -f academic_EER.sql
+```
+
+- 建立 `schema` `academic_eer` 方便資安於獨立使用。Data model設計清楚後，就可以善用AI。
+- 思考慣用JOIN寫法 vs. 老師上課教的寫法。
+
+### VSCode + Codex
+為了解省Github Copilot free tokens，大量測資以codex產生：
+- Extension > search Codex > 安裝好一陣子 (C:\Users\xxx\.vscode\extensions\openai.chatgpt-26.51007.21434-win32-x64, 1.7GB)
+- 完成：Chat旁邊Tab多了 `Codex`，在此聊天。 /status /plan
+- 要求Browser Session of ChatGPT (先瀏覽器登入)
+
+> set current working directory to ./psql/acdeamic
+
+> /plan check and verify academic_EER.sql and summarize docs into ./psql/readme.md
+
+Plan:
+1. Review psql/academic_EER.sql against the other SQL scripts and application queries.
+2. Verify it in an isolated PostgreSQL database: initial execution, repeat execution, seed hierarchy, foreign keys, overlapping member roles, classification triggers, and views.
+3. Record defects and distinguish enforced constraints from application responsibilities.
+4. Create ./psql/readme.md summarizing script purposes, setup commands, EER relationships, verification results, and API integration requirements.
+...
+PostgreSQL 18 tools are available locally. No files have been changed.
+
+> Keep my revises (e.g. ss replace enrollment) in academic_EER.sql and do it.
+
+Done. Preserved your revisions, including sf, ss, sta, and md.
+...
+- 自動產生 `verify_academic_EER.sql` 有興趣自己學習
+
+> create vdata.sql to generate virtual data (unicode traditional chinese) for simulating ncnu.edu.tw.
+> 1. 5 departments, must contain CSIE
+> 2. 111-1 to 115-1 semester (2 semesters per year start from Feb 1 and Sep 1 respectively)
+> 3. Each department has 90 ~ 150 courses with 20 ~ 30 course sections for each semester
+> 4. Each department has 30 students for each admission_year, student_no is s115ddnnnn, dd is department no and nnnn is serial no.
+> . Each department has 10 faculties and 2 staffs.
+> 6. Each faculty offer (sf relationship) 2 ~ 5 course sections for each semester. Naming e.g. 周杰倫、蔡依林 for example. Don't use real name from ncnu. Students use the same naming policy.
+> 7. Each student enrolls (ss relationship) 4 ~ 9 sections for each semester.
+8. You can add other virtual data that I did not consider.
+
+Verified fresh and repeat runs on PostgreSQL 18: 5 departments, 600 courses, 1,133 sections, 750 students, 50 faculty, and 10 staff. Teaching and enrollment ranges pass.
+```powershell
+psql -X -U postgres -d academic_eer_demo -f .\psql\academic\vdata.sql
+```
+因為codex沒有先前copilot聊天記憶，db應修改：
+```powershell
+psql -X -U postgres -d fastapi_dev -f .\psql\academic\vdata.sql
+```
+
+> psql:psql/academic_EER.sql:74: ERROR:  character with byte sequence 0x96 0xe9 in encoding "BIG5" has no equivalent in encoding "UTF8"
+
+psql is interpreting your UTF-8 SQL file as BIG5, causing the Chinese text conversion to fail.
+I verified the file is valid UTF-8 and added this immediately after \connect in [academic_EER.sql (line 20)](/C:/code/psql/api/psql/academic_EER.sql:20):
+```sql
+\encoding UTF8
+```
+
+> Add test.sql so that I can run selected sql statements within the file in VScode to check data rows.
+
+> 我不習慣JOIN寫法，習慣用FROM列出所已有table alias, ...，WHERE 寫T1.PK = T2.FK1 and T2.FK2 = T3.PK的寫法，這樣對應ER/EER model思考比較清楚。參考view vd_subclass的寫法，將test.sql用到JOIN的statements都改寫，並add to new test_wke.sql
+
+```sql JOIN
+SELECT p.cid as pcid, p.name as parent_name, c.cid as cid, c.name as child_name
+FROM inheritance i
+INNER JOIN class p
+    ON p.cid = i.pcid
+INNER JOIN class c
+    ON c.cid = i.ccid;
+```
+
+```sql wke-style
+SELECT p.cid as pcid, p.name as parent_name, c.cid as cid, c.name as child_name
+FROM class p, inheritance i, class c
+WHERE p.cid = i.pcid AND c.cid = i.ccid;
+```
+
+逐步檢視資料，發現問題：所有學號都是s115ddnnnn
+
+> update student_no by rule: s<adminion_year>ddnnnn. E.g. if adminion_year = 111 then set 's115010121' to 's111010121'。SQL寫於vdata.sql最後
+
+```sql
+-- 依入學年度更新學號，保留 ddnnnn；可在 VS Code 單獨選取執行。
+-- 例：admission_year=111，s115010121 -> s111010121。
+UPDATE academic_eer.student st
+SET student_no = 's' || st.admission_year::text || right(st.student_no, 6)
+--select 's' || st.admission_year::text || right(st.student_no, 6)
+--from academic_eer.student st
+WHERE st.admission_year IS NOT NULL
+  AND st.student_no ~ '^s[0-9]+[0-9]{6}$'
+--  AND st.student_no IS DISTINCT FROM
+--      's' || st.admission_year::text || right(st.student_no, 6);
+```
+
+>add academic_views.sql: create views from schema.academic_eer and can be accessed by schema.public with dev_user account.
+> 1. eer_subclass: according to vd_subclass and extending columns(pcid, pname, cid, name, des, namepath, idpath, des)
+
+```sql
+-- Same direct parent/child relationship as academic_eer.vd_subclass.
+-- des, namepath and idpath describe the child class.
+-- The requested duplicate des column is included once (view columns must be unique).
+-- Default view-owner permissions allow dev_user to query this view without
+-- granting direct access to the academic_eer tables.
+CREATE OR REPLACE VIEW public.eer_subclass AS
+SELECT p.cid AS pcid,
+       p.name AS pname,
+       c.cid AS cid,
+       c.name AS name,
+       c.des AS des,
+       c.namepath AS namepath,
+       c.idpath AS idpath
+FROM academic_eer.class p,
+     academic_eer.inheritance i,
+     academic_eer.class c
+WHERE p.cid=i.pcid
+  AND i.ccid=c.cid;
+
+GRANT USAGE ON SCHEMA public TO dev_user;
+GRANT SELECT ON TABLE public.eer_subclass TO dev_user;
+```
+
+### Github Copilot
+建立 `public.eer_subclass` 從 `academic_eer` schema取得資料：API需修改，也會連帶稍微改到Web。
+> 登入OAuth後，由db取得member.id，作為 subclass/pcid/{id} 參數
+
+目前 OAuth callback 已把資料寫入 member，但登入後的 /auth/me 沒有回傳 id；前端載入 subclass 時則把 pcid 寫死為 4。我會讓已驗證的會員資料提供資料庫 id，並確認首頁的載入流程可用它呼叫 API。
+
+我會調整 /auth/me 回傳資料包含資料庫 member.id，再讓首頁先取登入者資料，以該 id 載入 subclass/pcid/{id}；未登入時仍顯示既有登入提示，主控台卡片照常載入。
+
+已完成 OAuth 後以資料庫會員 ID 載入 subclass：
+- auth.py：/auth/me 現在會回傳資料庫的 member.id。
+- app.js：首頁先取得登入資料，再用其中的 ID 呼叫 /subclass/pcid/{id}；未登入時維持原有提示，主控台卡片仍會載入。
+- 同步更新 README.md 與 oauth.md 的 API 說明。
+
+#### Web
+前端程式中，member.id 不是從 OAuth token 直接取出，而是由後端的登入資料 API 回傳。實際使用的欄位名稱是 profile.id。流程如下：
+- index.html 的登入連結會導向 api/auth/google/login，開始 Google OAuth。
+- Google 驗證完成後，後端應驗證 Google 身分，並建立自己的登入 session。通常後端會用 Google 身分找到或建立系統內的會員，取得該會員的 member.id。
+- 前端呼叫 GET api/auth/me，並透過同源 session cookie 帶上登入狀態。回應會被解析成 profile：loadAccountProfile。
+- loadPageData 讀取 profile.id，檢查它是正整數後，呼叫 api/subclass/pcid/{profile.id}。
+
+因此，後端的 auth/me 回應需要包含內部會員 ID (自建立之DB)，例如：
+```json
+{
+  "id": 1,
+  "name": "XXX",
+  "email": "XXX@gmail.com",
+  "picture": "https://lh3.googleusercontent.com/a/ACg8ocI-GK9-7nOeHTh0dSbQnD9nUhI8be6LthNw6yMEsDY_r0f0RFk=s96-c"
+}
+```
+
+要注意，Google 的使用者識別值（例如 Google ID／sub）不一定等於你們系統的 member.id。若 API 回應沒有 id，前端會顯示「登入資料缺少有效會員識別碼」，也無法用這個 ID 載入選單。
+
+---
+
+## W08：Schema and Reuse Data Views{#ReuseView}
+
+利用Schema於data model隔離，並善用eer_subclass讓API可以reuse
+
+### PostgreSQL Schema：概念與運用
+
+#### 1. Schema是什麼？
+
+在PostgreSQL中，**Schema是Database內部用來組織與管理資料庫物件的命名空間（Namespace）**。
+
+一個Database可以包含多個Schema，而每個Schema可以包含Tables、Views、Functions、Sequences等物件。
+
+```text
+PostgreSQL Server
+│
+├── Database: fastapi_dev
+│   │
+│   ├── Schema: public (預設)
+│   │   ├── member
+│   │   └── course
+│   │
+│   └── Schema: academic_eer
+│       ├── object
+│       ├── member
+│       ├── faculty
+│       ├── student
+│       ├── course
+│       ├── section
+│       └── enrollment
+│
+└── Database: other_db
+    └── Schema: public
+```
+
+**重點：**
+- Database是資料庫的主要隔離單位。
+- Schema是同一Database內的邏輯分組與命名空間。
+- 不同Schema可以存在同名Table，例如`public.member`與`academic_eer.member`。
+- Schema不等於獨立Database，Schema之間可以透過SQL JOIN與Foreign Key建立關聯。
+- Schema也可作為權限管理的邊界，但不代表資料自動隔離。
+
+#### 2. 為什麼使用Schema？
+
+| 用途 | 說明 |
+|---|---|
+| 模組化 | 將教務、財務、人事資料表分組 |
+| 避免命名衝突 | 不同Schema可以有同名Table |
+| 權限管理 | 控制使用者能存取哪些Schema及物件 |
+| 版本並存 | 例如`academic_v1`、`academic_v2` |
+| 開發測試 | 將測試用物件與正式物件分開 |
+
+例如，大學系統可規劃：
+
+```text
+university_db
+├── academic    # 教務
+├── hr          # 人事
+├── finance     # 財務
+└── public      # 共用或預設物件
+```
+
+#### 3. Schema基本SQL操作
+
+**建立Schema**
+
+```sql
+CREATE SCHEMA academic_eer;
+```
+
+**建立Table到指定Schema**
+
+```sql
+CREATE TABLE academic_eer.member (
+    oid BIGINT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+```
+
+**查詢指定Schema的Table**
+
+```sql
+SELECT * FROM academic_eer.member;
+```
+
+**SQL：列出Schema and Tables**
+
+```sql
+SELECT schema_name FROM information_schema.schemata
+WHERE schema_name NOT IN ('information_schema') AND schema_name NOT LIKE 'pg_%';
+
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'academic_eer' AND table_type = 'BASE TABLE';
+```
+
+**刪除Schema**
+
+```sql
+DROP SCHEMA academic_eer;
+```
+
+若Schema內還有Table等物件，通常無法直接刪除。
+
+```sql
+DROP SCHEMA academic_eer CASCADE;
+```
+
+注意：`CASCADE`會連同內部物件及相依物件一併刪除，可能造成資料遺失。
+
+#### 4. search_path：決定SQL預設使用哪個Schema
+
+如果執行：
+
+```sql
+SELECT * FROM member;
+```
+
+PostgreSQL如何知道要查詢哪個Schema的`member`？
+
+答案是透過`search_path`。
+
+**查看目前設定**
+
+```sql
+SHOW search_path;
+```
+
+常見預設值：
+
+```text
+"$user", public
+```
+
+代表先尋找與目前使用者同名的Schema，再尋找`public`。
+
+**設定目前Session的Schema搜尋順序**
+
+```sql
+SET search_path TO academic_eer, public;
+```
+
+之後：
+
+```sql
+SELECT * FROM member;
+```
+
+會優先查詢`academic_eer.member`。
+
+也可以明確指定：
+
+```sql
+SELECT * FROM public.member;
+SELECT * FROM academic_eer.member;
+```
+
+- **注意：**`SET search_path`通常只影響目前的資料庫連線（Session），不會永久修改所有連線設定。
+- 若要設定預設順序於整個DB：
+
+```sql
+ALTER DATABASE fastapi_dev SET search_path TO academic_eer, public;
+```
+
+#### 5. Schema與EER的差異
+
+這兩個名詞容易混淆：
+
+| 名詞 | 意義 |
+|---|---|
+| Database Schema | 資料庫的邏輯結構定義，也可泛指Tables、Constraints等設計 |
+| PostgreSQL Schema | Database內的Namespace |
+| EER（Enhanced ER Model） | 描述Entity、Relationship、Inheritance等概念的資料模型 |
+
+例如：
+
+```text
+academic_eer (PostgreSQL Schema)
+│
+├── object
+├── member
+├── faculty
+├── staff
+└── student
+```
+
+其中`academic_eer`只是Namespace。
+
+而以下是EER的概念繼承：
+
+```text
+Object
+  └── Member
+       ├── Faculty
+       ├── Staff
+       └── Student
+```
+
+**Schema本身不會實現EER繼承。** 繼承關係需要透過資料表設計，例如Shared Primary Key（PK同時為FK）實作。
+
+#### 6. Schema權限管理
+
+例如建立一個只能查詢教務資料的使用者：
+
+```sql
+CREATE ROLE academic_reader LOGIN PASSWORD 'change_me';
+
+GRANT CONNECT ON DATABASE fastapi_dev TO academic_reader;
+
+GRANT USAGE ON SCHEMA academic_eer TO academic_reader;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA academic_eer
+TO academic_reader;
+```
+
+- `CONNECT`：允許連線至Database。
+- `USAGE`：允許解析Schema內的物件名稱。
+- `SELECT`：允許讀取授權的Tables。
+
+`USAGE`本身不代表可以讀取Table資料。
+
+上述`GRANT SELECT ON ALL TABLES`只涵蓋目前已存在的Tables。未來新增的Tables需要另外設定Default Privileges或重新授權。
+
+#### 7. 實務設計建議
+
+以簡易大學教務系統為例：
+
+- **單一系統、資料表數量少：** 可以先使用`public`。
+- **多模組系統：** 可以使用`academic`、`hr`、`finance`分組。
+- **EER架構實驗：** 使用`academic_eer`，避免與原本`public`中的資料表衝突。
+- **正式環境：** 建議明確指定Schema、設定最小權限，避免不可信使用者在應用程式的`search_path`中建立物件。
+
+**核心觀念：**
+
+> Database負責資料庫層級的隔離，Schema負責Database內部的命名與組織，Table負責實際儲存資料，而EER負責描述資料的實體、關聯與繼承結構。
+
+### Reuse `eer_subclass`
+
+- 原設計：無法得知目錄是否內含物件可以click → eer_co to get list objects 
+```sql
+SELECT p.cid AS pcid,
+       p.name AS pname,
+       c.cid AS cid,
+       c.name AS name,
+       c.des AS des,
+       c.namepath AS namepath,
+       c.idpath AS idpath
+FROM academic_eer.class p,
+     academic_eer.inheritance i,
+     academic_eer.class c
+WHERE p.cid=i.pcid AND i.ccid=c.cid;
+```
+
+- 加入count(*) > 0代表co存在 → click to show objects
+```sql
+drop view public.eer_subclass; -- view欄位變化須要刪除重寫
+CREATE OR REPLACE VIEW public.eer_subclass AS
+SELECT p.cid AS pcid, p.name AS pname, c.cid AS cid, c.name AS name, c.namepath AS namepath, c.idpath AS idpath, count(co.cid) as n
+FROM class p, inheritance i, class c
+LEFT JOIN co ON c.cid = co.cid  -- LEFT JOIN讓n = 0時，資料還是會出現
+WHERE i.ccid = c.cid and i.pcid = p.cid
+GROUP BY p.cid, c.cid, c.name, c.namepath, c.idpath;
+
+GRANT USAGE ON SCHEMA public TO dev_user;
+GRANT SELECT ON TABLE public.eer_subclass TO dev_user;
+```
+
+- 預設首頁資料
+```sql
+select * from eer_subclass where pcid = 0 order by n;
+```
+- 個人功能目錄
+```sql
+select * from eer_subclass where pcid = 0 order by cid;
+```
+
+#### eer_co
+
+已知cid取得目錄物件列表。**注意：** schema預設：academic_eer → public
+```sql
+CREATE OR REPLACE VIEW public.eer_co AS
+SELECT c.cid, c.name, o.oid, o.title, o.entity, o.entity_data
+FROM class c, co, eer_objectDetail o
+WHERE c.cid = co.cid and co.oid = o.oid
+order by o.oid;
+GRANT SELECT ON TABLE public.eer_co TO dev_user;
+
+select * from eer_co where cid = 31;
+```
 
 
+
+#### github copilot
+> 新增 /api/root 對應 api/subclass/pcid/0。但是盡量reuse現有codes
+
+> /api/root 視為public，不須登入
+
+> add /api/root/co/{cid} to get select * from public.eer_co where cid = {cid}
+
+> #sym:get_subclasses_by_pcid 檢查並調整為最佳寫法
+- 僅排序方式不同，加入 `order_by` 參數
+```python
+def get_subclasses_by_pcid(
+    connection: psycopg.Connection,
+    pcid: int,
+    order_by: Literal["cid", "n"],
+) -> list[dict[str, Any]]:
+    """Return subclass rows for a parent class ID, ordered by a supported column."""
+
+    query = sql.SQL(
+        "SELECT * FROM eer_subclass WHERE pcid = %s ORDER BY {}"
+    ).format(sql.Identifier(order_by))
+    with connection.cursor(row_factory=dict_row) as cursor:
+        cursor.execute(query, (pcid,))
+        return cursor.fetchall()
+```
+- public API
+```python
+@api_router.get("/root", tags=["subclass"])
+def read_root_subclasses(
+    connection: psycopg.Connection = Depends(get_db_connection),
+) -> list[dict[str, object]]:
+    """回傳根節點（pcid=0）底下的 subclass。"""
+
+    return get_subclasses_by_pcid(connection, 0, "n")
+```
+- member API： `dependencies=[Depends(get_current_member)]`
+```python
+router = APIRouter(
+    prefix="/subclass",
+    tags=["subclass"],
+    dependencies=[Depends(get_current_member)],
+)
+
+@router.get("/pcid/{id}")
+def read_subclasses_by_pcid(
+    id: int,
+    connection: psycopg.Connection = Depends(get_db_connection),
+) -> list[dict[str, object]]:
+    """依照 parent class id 回傳所有 subclass。"""
+
+    return get_subclasses_by_pcid(connection, id, "cid")
+```
+
+
+
+---
+
+## W9：進階查詢：分頁、篩選、搜尋 {#paging}
+
+### 1. 學習目標
+
+實作實務系統必備的資料查詢功能：
+- Pagination：分頁，避免一次載入大量資料。
+- Filtering：依照條件動態篩選資料。
+- Searching：使用關鍵字搜尋資料。
+- Sorting：依照指定欄位排序。
+- 比較 FastAPI 與 PostgreSQL VIEW 的實作方式。
+- 理解 API、Database 的職責分工及資安問題。
+
+**核心問題：查詢邏輯應該放在 FastAPI，還是 PostgreSQL？**
+
+### 2. 系統架構
+假設建立一個課程查詢系統，資料庫包含：
+```sql
+CREATE TABLE courses (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  code VARCHAR(20) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  department VARCHAR(50) NOT NULL,
+  credits INTEGER NOT NULL CHECK (credits > 0),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+```
+
+API 提供：
+```http
+GET /courses?page=1&size=10
+GET /courses?department=CS
+GET /courses?keyword=Python
+GET /courses?department=CS&keyword=Web&page=2&size=10
+```
+
+回傳 JSON：
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "code": "CS101",
+      "name": "Web Programming",
+      "department": "CS",
+      "credits": 3
+    }, ...
+  ],
+  "total": 25,
+  "page": 1,
+  "size": 10,
+  "total_pages": 3
+}
+```
+
+#### 基本 SQL
+
+**分頁（Pagination）**
+```sql
+SELECT *
+FROM courses
+ORDER BY id
+LIMIT 10 OFFSET 20;
+```
+- LIMIT：最多回傳 10 筆。
+- OFFSET：跳過前 20 筆。
+- 對應第 3 頁，每頁 10 筆。
+
+公式：
+```python
+offset = (page - 1) * size
+```
+
+**篩選（Filtering）**
+```sql
+SELECT *
+FROM courses
+WHERE department = 'CS'
+  AND is_active = TRUE;
+```
+
+**搜尋（Searching）**
+```sql
+SELECT *
+FROM courses
+WHERE name ILIKE '%Python%';
+```
+- LIKE：依資料庫的比較規則進行字串比對。
+- ILIKE：PostgreSQL 不區分英文大小寫的比對。
+- `%`：萬用字元，可代表任意長度的字串。
+
+注意：`ILIKE '%keyword%'` 在大量資料時可能效率不佳。
+
+### 3. 方法 A：FastAPI 動態組合 SQL
+
+#### 3.1 架構
+
+```text
+Frontend (React / JavaScript)
+          |
+          | GET /courses?department=CS&keyword=Web
+          v
+FastAPI
+  ├── 驗證查詢參數
+  ├── 動態組合 WHERE
+  ├── 執行 COUNT(*)
+  ├── 計算 LIMIT / OFFSET
+  └── 回傳 JSON
+          |
+          v
+PostgreSQL courses table
+```
+
+#### 3.2 FastAPI 範例
+使用 `psycopg` 3，假設已建立資料庫連線設定。
+```python
+from fastapi import FastAPI, Query
+from psycopg.rows import dict_row
+import psycopg
+import math
+import os
+
+app = FastAPI()
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+@app.get("/courses")
+def get_courses(
+  page: int = Query(1, ge=1),
+  size: int = Query(10, ge=1, le=100),
+  department: str | None = None,
+  keyword: str | None = None
+):
+  conditions = []
+  params = []
+
+  if department:
+    conditions.append("department = %s")
+    params.append(department)
+
+  if keyword:
+    conditions.append("name ILIKE %s")
+    params.append(f"%{keyword}%")
+
+  where_sql = (
+    " WHERE " + " AND ".join(conditions)
+    if conditions else ""
+  )
+
+  offset = (page - 1) * size
+
+  with psycopg.connect(DATABASE_URL) as conn:
+    with conn.cursor(row_factory=dict_row) as cur:
+      cur.execute(
+        "SELECT COUNT(*) AS total FROM courses" + where_sql,
+        params
+      )
+      total = cur.fetchone()["total"]
+
+      cur.execute(
+        "SELECT id, code, name, department, credits "
+        "FROM courses" + where_sql +
+        " ORDER BY id LIMIT %s OFFSET %s",
+        params + [size, offset]
+      )
+      items = cur.fetchall()
+
+  return {
+    "items": items,
+    "total": total,
+    "page": page,
+    "size": size,
+    "total_pages": math.ceil(total / size)
+  }
+```
+
+#### 3.3 特點
+優點：
+- API 邏輯集中於 Python，容易理解與除錯。
+- 可根據不同條件動態建立 WHERE。
+- 易於整合 Pydantic、JWT、Authentication。
+- 適合 API 專屬的查詢需求。
+
+缺點：
+- 多支 API 可能重複撰寫 JOIN、WHERE。
+- 複雜 SQL 會讓 Python 程式碼難以維護。
+- 查詢邏輯與 API 邏輯可能高度耦合。
+- 必須嚴格防範 SQL Injection。
+
+### 4. 方法 B：PostgreSQL VIEW + FastAPI
+
+#### 4.1 VIEW 是什麼？
+VIEW（檢視表）是一個**儲存在資料庫中的查詢定義**。
+
+一般 VIEW 不會另外儲存查詢結果，而是在查詢時由 PostgreSQL 執行及最佳化。例如：
+```sql
+CREATE VIEW v_active_courses AS
+SELECT
+  id,
+  code,
+  name,
+  department,
+  credits
+FROM courses
+WHERE is_active = TRUE;
+```
+
+使用方式：
+```sql
+SELECT *
+FROM v_active_courses
+WHERE department = 'CS'
+ORDER BY id
+LIMIT 10 OFFSET 0;
+```
+
+VIEW 可以視為一個可重複使用的資料查詢介面。
+
+#### 4.2 架構
+
+```text
+Frontend (React / JavaScript)
+          |
+          v
+FastAPI
+  ├── 驗證參數
+  ├── 動態篩選
+  ├── Pagination
+  └── JSON Response
+          |
+          v
+PostgreSQL VIEW
+  └── v_active_courses
+          |
+          v
+PostgreSQL TABLE
+  └── courses
+```
+
+#### 4.3 FastAPI 查詢 VIEW
+
+沿用前面範例的 FastAPI 程式，只需要將：
+```python
+"FROM courses"
+```
+
+修改為：
+```python
+"FROM v_active_courses"
+```
+
+便能使用 VIEW 提供的資料。例如：
+```sql
+SELECT *
+FROM v_active_courses
+WHERE department = 'CS'
+  AND name ILIKE '%Web%'
+ORDER BY id
+LIMIT 10 OFFSET 0;
+```
+
+**注意：VIEW 不會自動實作分頁、動態篩選或搜尋。**
+
+VIEW 負責提供一致的資料集合；FastAPI 仍負責接收參數、執行查詢與回傳結果。
+
+### 5. VIEW 的進階應用：封裝 JOIN
+
+VIEW 真正有價值的地方，是將多個資料表的複雜查詢封裝起來。
+
+假設另有系所資料表：
+```sql
+CREATE TABLE departments (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  code VARCHAR(20) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL
+);
+```
+
+建立跨資料表 VIEW：
+```sql
+CREATE VIEW v_course_details AS
+SELECT
+  c.id,
+  c.code,
+  c.name,
+  c.credits,
+  d.name AS department_name
+FROM courses c
+JOIN departments d
+  ON c.department = d.code
+WHERE c.is_active = TRUE;
+```
+
+FastAPI 不需要知道 JOIN 細節：
+```sql
+SELECT *
+FROM v_course_details
+WHERE department_name ILIKE '%資訊%'
+ORDER BY id
+LIMIT 10 OFFSET 0;
+```
+
+優點：
+1. 多支 API 可共用同一個 VIEW。
+2. 避免重複撰寫複雜 JOIN。
+3. 資料表結構與 API 查詢介面適度解耦。
+4. 修改內部 JOIN 時，可降低對 API 的影響。
+
+但 VIEW 欄位變更仍可能破壞既有 API，因此需要管理資料庫 Schema Migration。
+
+### 6. FastAPI vs. PostgreSQL VIEW 比較
+
+| 比較面向 | FastAPI 直接查詢 | PostgreSQL VIEW + FastAPI |
+|---|---|---|
+| SQL 邏輯 | Python 程式內 | 部分封裝於 VIEW |
+| 動態篩選 | 容易 | 仍由 API 傳入條件 |
+| 關鍵字搜尋 | SQL WHERE | SQL WHERE |
+| Pagination | LIMIT / OFFSET | LIMIT / OFFSET |
+| 複雜 JOIN | 需在 API 撰寫 | 可封裝於 VIEW |
+| 程式碼重複 | 可能較多 | 可減少 |
+| 維護方式 | 修改 Python | 修改 VIEW 或 Python |
+| 權限控制 | API + DB | API + DB，可配合 VIEW 權限 |
+| 查詢效能 | 依 SQL 與索引 | 通常與等價 SQL 接近 |
+| 適用情境 | 簡單、動態查詢 | 複雜、重複使用的資料查詢 |
+
+#### 效能的重要觀念
+
+**一般 VIEW 不等於快取，也不保證查詢更快。**
+
+PostgreSQL 通常會將 VIEW 展開並進行查詢最佳化。因此：
+```sql
+SELECT * FROM v_active_courses;
+```
+
+與等價的原始 SQL，通常具有接近的執行計畫。真正影響效能的因素包括：
+- Index 是否適當。
+- WHERE 是否能有效利用索引。
+- JOIN 的成本。
+- 資料筆數與分布。
+- OFFSET 大小。
+- 查詢執行計畫。
+
+可使用：
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT *
+FROM v_active_courses
+WHERE department = 'CS'
+ORDER BY id
+LIMIT 10;
+```
+
+觀察 PostgreSQL 實際查詢效能。
+
+### 7. 資安重點
+
+### 7.1 SQL Injection
+
+錯誤：
+```python
+sql = f"SELECT * FROM courses WHERE name = '{keyword}'"
+```
+
+攻擊者可能輸入惡意 SQL，改變原本查詢邏輯。正確：
+```python
+cur.execute(
+  "SELECT * FROM courses WHERE name = %s",
+  (keyword,)
+)
+```
+
+使用 Parameterized Query（參數化查詢）。
+
+**注意：SQL 參數只能用於資料值，不能直接替代資料表名稱或欄位名稱。**
+
+動態排序欄位應使用白名單：
+```python
+allowed_sort = {
+  "id": "id",
+  "name": "name",
+  "credits": "credits"
+}
+
+sort_column = allowed_sort.get(sort_by, "id")
+```
+
+#### 7.2 Pagination 限制
+
+```python
+size: int = Query(10, ge=1, le=100)
+```
+
+限制每頁最多 100 筆，避免使用者一次要求過多資料。但這不能完全防止大量查詢造成的負載，仍需考慮 Rate Limiting、Timeout 等措施。
+
+#### 7.3 VIEW 不等於完整的資料安全機制
+
+VIEW 可以配合資料庫權限，限制應用程式能讀取的資料欄位。例如不暴露敏感資料：
+```sql
+CREATE VIEW v_public_members AS
+SELECT id, display_name
+FROM members;
+```
+
+仍需注意：
+- VIEW Owner 與 Invoker 的權限語意。
+- PostgreSQL 版本及 `security_invoker` 設定。
+- Row-Level Security（RLS）政策。
+- 不可單靠 VIEW 取代 API Authentication / Authorization。
+
+### 8. 進階：OFFSET vs. Keyset Pagination
+
+#### OFFSET Pagination
+```sql
+SELECT *
+FROM courses
+ORDER BY id
+LIMIT 10 OFFSET 100000;
+```
+- 優點：容易跳到指定頁碼。
+- 缺點：OFFSET 很大時，資料庫可能需要處理大量前面的資料列。
+
+### Keyset Pagination（Cursor-based）
+```sql
+SELECT *
+FROM courses
+WHERE id > 1000
+ORDER BY id
+LIMIT 10;
+```
+
+利用上一頁最後一筆 ID 作為下一頁的起點。優點：
+- 適合大量資料與無限捲動。
+- 搭配適當索引，通常能改善深度分頁效能。
+- 對新增或刪除資料造成的頁面位移較不敏感。
+
+缺點：
+- 不容易直接跳到第 N 頁。
+- 複合排序時需要設計對應 Cursor。
+
+### 9. AI Coding 實作練習
+
+#### Task 1：基本查詢
+
+使用 AI 協助完成：
+```http
+GET /courses?page=2&size=5
+```
+
+要求：
+- 正確計算 OFFSET。
+- 回傳 total、total_pages。
+- 固定排序，避免分頁順序不穩定。
+
+#### Task 2：動態篩選與搜尋
+
+加入：
+```http
+GET /courses?department=CS&keyword=Web
+```
+
+檢查：
+- 未提供參數時能否正常查詢？
+- 多個條件是否使用 AND？
+- keyword 為空字串時如何處理？
+- SQL 是否使用 Parameterized Query？
+
+#### Task 3：VIEW 重構
+要求 AI：
+> 將課程查詢中重複使用的 JOIN 與固定條件抽離至 PostgreSQL VIEW，保留 FastAPI 的動態篩選、搜尋、分頁及 JSON 回應格式。比較重構前後的 SQL 與程式碼。
+
+#### Task 4：效能分析
+
+使用：
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+```
+
+比較：
+1. 直接查詢 TABLE。
+2. 查詢 VIEW。
+3. 加入 Index 後的查詢。
+
+不要只相信 AI 說「VIEW 比較快」，應以實際執行計畫及測量結果驗證。
+
+### 10. AI 學習心得（ai.md）
+
+請學生回答：
+1. AI 產生的 SQL 如何避免 SQL Injection？
+2. 為何 VIEW 不一定比直接查詢 TABLE 快？
+3. 哪些查詢邏輯適合放在 VIEW，哪些適合放在 FastAPI？
+4. 當資料量增加到 100 萬筆時，OFFSET Pagination 可能發生什麼問題？
+5. 本週 AI 產生的程式碼中，自己發現、修正或驗證了哪些問題？
+
+#### 本週筆記（足弓／objectlist）
+
+1. **AI 產生的 SQL 如何避免 SQL Injection？**  
+   使用者輸入（如 `q`）只當 **參數值** 傳給 psycopg（`%s`），不要用 f-string 把 keyword 拼進 SQL 本文。動態組的只有「要不要加這段條件」；欄位名若動態必須白名單。本週 `list_by_cid_page`：`ILIKE %s`，`'%' + keyword + '%'` 放在 params。
+
+2. **為何 VIEW 不一定比直接查詢 TABLE 快？**  
+   一般 VIEW 是存起來的查詢定義，執行時仍會展開打底表，再由規劃器決定計畫。不會自動比較快；複雜 VIEW 甚至多一層。快不快看索引與 `EXPLAIN (ANALYZE, BUFFERS)`，不能只信「用了 VIEW」。
+
+3. **哪些適合 VIEW，哪些適合 FastAPI？**  
+   - VIEW：固定 JOIN、穩定欄位、重複語意（`vd_objectlist`＝co＋object＋縮圖欄）。  
+   - FastAPI：每次不同的 `q`／`page`／`size`、權限、Pydantic 驗證、組 `{total, total_pages}` JSON。  
+   VIEW 不會自動分頁或動態 keyword。
+
+4. **100 萬筆時 OFFSET 可能怎樣？**  
+   `OFFSET` 很大時，DB 常仍要跳過前面大量列，越深越慢；中間增刪資料也可能讓同一頁號內容位移。大量＋無限捲動較常用 Keyset（`WHERE oid > last ORDER BY oid LIMIT n`）。
+
+5. **自己發現／修正／驗證了什麼？**  
+   - 曾做自訂 `/api/exercise/search`，偏離 reuse `vd_subclass`／objectlist → 改回 VIEW＋既有端點。  
+   - API 改回傳 `{items,total,page,size,total_pages}` 後前端要跟著改，不能再當純陣列。  
+   - 關鍵字曾只前端過濾 → 補參數化 `ILIKE`，用 `q=提踵`、`page=2&size=5` 對過 total。  
+   - 多目錄 AND 仍多次 objectlist 交集：當小資料取捨，不是十萬筆級做法。
+
+GitHub Commit 建議：
+```text
+feat: add course pagination
+feat: support dynamic filtering and keyword search
+refactor: extract course query into PostgreSQL view
+test: verify pagination and search edge cases
+docs: document query performance and AI review
+```
+
+每個 Commit 應對應實際且可驗證的程式變更，而不是為增加 Commit 數量刻意拆分。
+
+### 11. 結論與建議
+
+實務上建議採取 **FastAPI + PostgreSQL VIEW 混合架構**：
+
+| 職責 | 建議位置 |
+|---|---|
+| HTTP Query Parameters | FastAPI |
+| 參數驗證 | FastAPI / Pydantic |
+| Authentication | FastAPI |
+| Authorization | FastAPI + DB |
+| 動態 Filtering | FastAPI 傳條件，PostgreSQL 執行 |
+| Searching | PostgreSQL SQL / Index |
+| Pagination | FastAPI 計算，PostgreSQL 執行 |
+| 複雜 JOIN | PostgreSQL VIEW |
+| 共用資料查詢定義 | PostgreSQL VIEW |
+| JSON Response | FastAPI |
+| Query Optimization | PostgreSQL Index / EXPLAIN |
+
+---
+
+## W10：錯誤處理、Logging、Middleware {#logging}
+看訊息，思考logs該如何做？
+```text
+PS C:\code\psql\api> & c:/code/psql/api/venv/Scripts/Activate.ps1
+(venv) PS C:\code\psql\api> .\run.bat
+
+C:\code\psql\api>uvicorn app.main:app --reload --host 0.0.0.0 --port 7777 
+INFO:     Will watch for changes in these directories: ['C:\\code\\psql\\api']
+INFO:     Uvicorn running on http://0.0.0.0:7777 (Press CTRL+C to quit)
+INFO:     Started reloader process [15524] using WatchFiles
+INFO:     Started server process [15716]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     163.22.22.45:64686 - "GET /api/subclass/pcid/249 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:64687 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:64689 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     163.22.22.45:64689 - "GET /js/records.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:64689 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     163.22.22.45:64690 - "GET /api/root HTTP/1.1" 200 OK
+INFO:     163.22.22.45:64689 - "GET /api/subclass/pcid/249 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:64690 - "GET /api/root/co/25 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:64690 - "GET /api/subclass/pcid/251 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:64690 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57205 - "GET /api/root/co/261 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57207 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57210 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57212 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57212 - "GET /api/docs HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57212 - "GET /api/openapi.json HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57214 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57222 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57223 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57228 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57229 - "GET / HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57229 - "GET /css/style.css HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57230 - "GET /js/app.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57229 - "GET /css/responsive.css HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57231 - "GET /css/components.css HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57232 - "GET /css/layout.css HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57230 - "GET /js/api.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57234 - "GET /js/sidebar.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57233 - "GET /js/account.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57237 - "GET /js/data-view.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57236 - "GET /js/dashboard.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57235 - "GET /js/navigation.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57232 - "GET /js/records.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57229 - "GET /js/data-table.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57237 - "GET /favicon.svg HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57235 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57231 - "GET /api/root HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57234 - "GET /api/subclass/pcid/249 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57230 - "GET /api/subclass/pcid/251 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57229 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57238 - "GET /api/root/co/1964 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57239 - "GET /api/root/co/2072 HTTP/1.1" 200 OK
+INFO:     10.21.26.181:61038 - "GET /s115999999/api/root/co/2072 HTTP/1.1" 200 OK
+INFO:     10.21.26.181:61612 - "GET /s115999999/api/root/co/2072 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57243 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57243 - "GET /api/root/co/1946 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57244 - "GET /api/root/co/2304 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57245 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57245 - "GET /api/root/co/1954 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57246 - "GET /api/root/co/260 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57246 - "GET /api/root/co/1954 HTTP/1.1" 200 OK
+INFO:     10.21.26.181:61888 - "GET /s115999999/api/root/co/1954 HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57247 - "GET / HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57247 - "GET /js/app.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57248 - "GET /css/style.css HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57249 - "GET /js/api.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57247 - "GET /js/account.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57251 - "GET /js/navigation.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57250 - "GET /js/sidebar.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57252 - "GET /js/dashboard.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57253 - "GET /js/data-view.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57248 - "GET /css/layout.css HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57255 - "GET /css/components.css HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57254 - "GET /css/responsive.css HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57249 - "GET /js/data-table.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57247 - "GET /js/records.js HTTP/1.1" 200 OK
+INFO:     163.22.22.45:57251 - "GET /favicon.svg HTTP/1.1" 200 OK
+```
+
+### 1. 學習目標
+建立FastAPI統一錯誤處理機制，並透過PostgreSQL記錄API執行狀態。
+- Exception Handling：統一處理HTTP及程式執行錯誤。
+- Middleware：攔截Request/Response，記錄執行資訊。
+- Structured Logging：以結構化資料儲存Log。
+- Session Tracking：追蹤使用者Session及相關API操作。
+- Asynchronous Logging：API回應與Log寫入分離。
+- Security：避免Log洩漏敏感資訊。
+
+核心問題：
+> 如何讓API發生錯誤時，Client收到一致的錯誤格式，同時由Server非同步記錄至PostgreSQL，而不明顯影響API回應時間？
+
+### 2. 系統架構
+```text
+Client (Browser / React)
+          |
+          | HTTP Request
+          v
+FastAPI Middleware
+  ├── 產生 Request ID
+  ├── 辨識 Session ID
+  └── 開始計時
+          |
+          v
+FastAPI Endpoint
+  ├── 正常執行
+  └── 發生錯誤
+        |
+        v
+   Exception Handler
+   └── 統一錯誤 JSON
+          |
+          v
+FastAPI Middleware
+  ├── HTTP Status
+  ├── Duration
+  ├── Error Code
+  └── Structured Log
+          |
+          +----------------------+
+          |                      |
+          v                      v
+    HTTP Response          Background Task
+    回傳 Client                  |
+                                 v
+                             PostgreSQL
+                         api_sessions (1)
+                               |
+                               | 1:N
+                               v
+                           api_logs (N)
+```
+
+設計原則：
+1. API不應等待Log寫入資料庫後才回應。
+2. 每個Request都有唯一Request ID。
+3. 同一Session可對應多筆API Logs。
+4. 所有HTTP錯誤使用一致的JSON格式。
+5. Log儲存必要資訊，不包含敏感資料。
+
+注意：FastAPI BackgroundTasks在Response送出後執行，但仍屬於同一應用程式進程，不保證Log一定成功寫入。
+
+### 3. PostgreSQL資料表設計
+
+#### 3.1 Session Table
+```text
+瀏覽器 Cookie
+api_session = UUID + 時間戳記 + 簽章
+                    ↓
+每次請求自動帶給 FastAPI
+                    ↓
+Middleware 驗證簽章，取出 UUID
+                    ↓
+對應 PostgreSQL 的 api_sessions.id
+```
+
+Session代表使用者的一次應用程式工作階段。
+```sql
+CREATE TABLE IF NOT EXISTS api_sessions (
+	id UUID PRIMARY KEY,
+	mid INTEGER,
+	ip INET,
+	started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	ended_at TIMESTAMPTZ
+);
+```
+
+欄位說明：
+| 欄位 | 說明 |
+|---|---|
+| id | Session唯一識別碼 |
+| member_id | 使用者ID，可為NULL |
+| ip | 可儲存 IPv4、IPv6；若要追蹤每次請求的 IP，應另外記錄在 request log。 |
+| started_at | Session建立時間 |
+| last_seen_at | 最近活動時間 |
+| ended_at | Session結束時間 |
+
+Session ID應由Server產生，並透過可信任的Session或Authentication機制驗證。不要將原始JWT或Session Token直接存入Log。
+
+#### 3.2 Log Table
+一個Session可包含多筆API操作紀錄。
+```sql
+CREATE TABLE api_logs (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  session_id UUID REFERENCES api_sessions(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ip INET,
+  method VARCHAR(10) NOT NULL,
+  path TEXT NOT NULL,
+  status_code INTEGER NOT NULL,
+  message TEXT
+);
+```
+
+建立Index：
+```sql
+-- 依時間範圍查詢、查看最新紀錄
+CREATE INDEX idx_api_logs_created_at ON api_logs (created_at);
+-- 查詢某個 session 的紀錄，並依時間排序
+CREATE INDEX idx_api_logs_session_created_at ON api_logs (session_id, created_at);
+-- 依 IP 查詢，並依時間排序
+CREATE INDEX idx_api_logs_ip_created_at ON api_logs (ip, created_at);
+```
+```sql
+-- Session：建立、查詢與更新最後活動時間
+GRANT SELECT, INSERT, UPDATE ON TABLE public.api_sessions TO dev_user;
+-- Log：新增紀錄
+GRANT INSERT ON TABLE public.api_logs TO dev_user;
+-- Log 自動編號需要使用 sequence
+-- GRANT USAGE ON SEQUENCE public.api_logs TO dev_user;
+```
+
+思考上述SQL會建立在哪個Schema？
+
+```sql
+CREATE TABLE IF NOT EXISTS public.api_sessions (
+    id UUID PRIMARY KEY,
+    mid INTEGER,
+    ip INET,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ended_at TIMESTAMPTZ
+);
+CREATE TABLE IF NOT EXISTS public.api_logs (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    session_id UUID REFERENCES public.api_sessions(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ip INET,
+    method VARCHAR(10) NOT NULL,
+    path TEXT NOT NULL,
+    status_code INTEGER NOT NULL,
+    message TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_api_logs_created_at ON public.api_logs (created_at);
+CREATE INDEX IF NOT EXISTS idx_api_logs_session_created_at ON public.api_logs (session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_api_logs_ip_created_at ON public.api_logs (ip, created_at);
+GRANT SELECT, INSERT, UPDATE ON TABLE public.api_sessions TO dev_user;
+GRANT INSERT ON TABLE public.api_logs TO dev_user;
+```
+
+#### 3.3 EER Relationship
+```text
+api_sessions
+-----------------------
+PK id
+   member_id
+   started_at
+   last_seen_at
+   ended_at
+         |
+         | 1
+         |
+         | N
+         v
+api_logs
+-----------------------
+PK id
+FK session_id
+   request_id
+   created_at
+   level
+   method
+   path
+   status_code
+   duration_ms
+   error_code
+   message
+   details
+```
+
+關聯：
+- 一個Session可以有多筆Logs。
+- 每筆Log最多屬於一個Session。
+- 匿名請求的session_id可以為NULL。
+- request_id用於追蹤單一HTTP請求。
+
+### 4. 統一錯誤回應格式
+所有API錯誤使用一致JSON格式：
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "找不到指定資源"
+  },
+//   "request_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+- `request_id` 將來可用於識別一連串操作，log records對應相同request_id
+
+常見HTTP錯誤：
+| Status | Error Code | 說明 |
+|---|---|---|
+| 400 | BAD_REQUEST | 請求格式錯誤 |
+| 401 | UNAUTHORIZED | 尚未通過身分驗證 |
+| 403 | FORBIDDEN | 權限不足 |
+| 404 | NOT_FOUND | 資源不存在 |
+| 422 | VALIDATION_ERROR | 參數驗證失敗 |
+| 500 | INTERNAL_ERROR | 伺服器內部錯誤 |
+
+重要原則：
+- Client收到簡潔且安全的錯誤訊息。
+- Server Log保留必要的診斷資訊。
+- 不應回傳Traceback、SQL錯誤細節或資料庫連線資訊。
+
+### 5. FastAPI實作
+
+> 根據設計，讓fastapi加入非同步session and log與錯誤處理處理，以middleware 非同步寫入PostgreSQL
+
+```shell
+uvicorn app.main:app --reload --host 0.0.0.0 --port 7777 --loop app.core.event_loop:selector_loop_factory
+```
+
+#### 為什麼修改 run.bat？
+
+讓 FastAPI **非同步寫入 PostgreSQL**。「非同步」表示：當程式等待資料庫回覆時，FastAPI 可以先處理其他工作，不必停在原地等。Python 需要一個「工作調度員」來安排這些工作，這就是 **event loop（事件迴圈）**。
+
+#### Windows 的事件迴圈
+
+Windows 有兩種 event loop：
+
+| 種類 | psycopg 非同步連線能否使用 |
+|---|---|
+| ProactorEventLoop | 不支援 |
+| SelectorEventLoop | 支援 |
+
+所以在 `run.bat` 的啟動指令加上：
+
+```bat
+--loop app.core.event_loop:selector_loop_factory
+```
+
+這段可以拆成：
+
+- `--loop`：指定使用哪個事件迴圈。
+- `app.core.event_loop`：找到專案的 `app/core/event_loop.py`。
+- `selector_loop_factory`：呼叫這個檔案裡的函式。
+
+#### 函式內容
+
+```python
+import asyncio
+
+
+def selector_loop_factory():
+    return asyncio.SelectorEventLoop()
+```
+
+意思就是：「建立一個 psycopg 可以使用的工作調度員。」
+
+修改 `run.bat` 的目的，是讓 Windows 使用相容的執行方式，確保 session 和 log 能非同步寫入資料庫。原本一般同步的資料庫操作不需要這個設定。
+
+`--loop app.core.event_loop:selector_loop_factory` 會讓 Uvicorn 使用 SelectorEventLoop。Windows 預設的 ProactorEventLoop 不支援 psycopg 的非同步連線，可能導致 session、log 寫入失敗。
+
+你目前的 --reload 模式通常已使用 Selector，因此這個參數主要是明確固定設定，避免移除 --reload 後出問題。
+
+#### 5.1 安裝套件
+```bash
+pip install fastapi uvicorn "psycopg[binary]"
+```
+
+設定環境變數：
+```text
+DATABASE_URL=postgresql://user:password@localhost:5432/mydb
+```
+
+實務上應透過環境變數或Secrets Manager管理連線資訊，不要將密碼提交至GitHub。
+
+#### 5.2 非同步寫入PostgreSQL
+建立`app/logging_db.py`：
+
+```python
+import os
+import logging
+import psycopg
+
+logger = logging.getLogger("api")
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+async def save_log(data):
+  try:
+    async with await psycopg.AsyncConnection.connect(
+      DATABASE_URL
+    ) as conn:
+      async with conn.cursor() as cur:
+        await cur.execute("""
+          INSERT INTO api_logs (
+            session_id,
+            request_id,
+            level,
+            method,
+            path,
+            status_code,
+            duration_ms,
+            error_code,
+            message
+          )
+          VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+          data["session_id"],
+          data["request_id"],
+          data["level"],
+          data["method"],
+          data["path"],
+          data["status_code"],
+          data["duration_ms"],
+          data["error_code"],
+          data["message"]
+        ))
+
+  except Exception:
+    logger.exception("Failed to save API log")
+```
+
+使用Parameterized Query防止SQL Injection。注意：
+- `async def`允許在等待I/O時讓出執行權。
+- 非同步不等於平行執行。
+- 每次建立資料庫連線會有額外成本。
+- 正式系統建議使用Connection Pool。
+
+### 6. Exception Handler
+建立`app/main.py`：
+```python
+import uuid
+import logging
+
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import (
+  HTTPException as StarletteHTTPException
+)
+
+app = FastAPI()
+logger = logging.getLogger("api")
+
+def error_response(request, status, code, message):
+  request.state.error_code = code
+  request.state.error_message = message
+
+  return JSONResponse(
+    status_code=status,
+    content={
+      "success": False,
+      "error": {
+        "code": code,
+        "message": message
+      },
+      "request_id": str(request.state.request_id)
+    }
+  )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request, exc):
+  return error_response(
+    request,
+    exc.status_code,
+    f"HTTP_{exc.status_code}",
+    str(exc.detail)
+  )
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request, exc):
+  return error_response(
+    request,
+    422,
+    "VALIDATION_ERROR",
+    "請求參數驗證失敗"
+  )
+
+@app.exception_handler(Exception)
+async def unexpected_error(request, exc):
+  logger.error(
+    "Unhandled error: request_id=%s",
+    getattr(request.state, "request_id", "unknown"),
+    exc_info=(type(exc), exc, exc.__traceback__)
+  )
+
+  return error_response(
+    request,
+    500,
+    "INTERNAL_ERROR",
+    "伺服器內部錯誤"
+  )
+```
+
+Exception Handler的用途：
+1. 將不同錯誤轉換成一致的JSON格式。
+2. 避免將內部錯誤細節暴露給Client。
+3. 讓Frontend可以依error.code進行處理。
+
+### 7. Middleware + Background Logging
+在`app/main.py`加入：
+```python
+import time
+from fastapi import BackgroundTasks
+from app.logging_db import save_log
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+  start = time.perf_counter()
+
+  request.state.request_id = uuid.uuid4()
+  request.state.error_code = None
+  request.state.error_message = None
+
+  # 示範匿名請求。
+  # 登入後應由可信任的Session機制取得。
+  request.state.session_id = None
+
+  try:
+    response = await call_next(request)
+
+  except Exception:
+    logger.exception(
+      "Request failed: %s",
+      request.state.request_id
+    )
+
+    response = error_response(
+      request,
+      500,
+      "INTERNAL_ERROR",
+      "伺服器內部錯誤"
+    )
+
+  duration = (time.perf_counter() - start) * 1000
+  status = response.status_code
+
+  level = (
+    "ERROR" if status >= 500
+    else "WARNING" if status >= 400
+    else "INFO"
+  )
+
+  log_data = {
+    "session_id": request.state.session_id,
+    "request_id": request.state.request_id,
+    "level": level,
+    "method": request.method,
+    "path": request.url.path,
+    "status_code": status,
+    "duration_ms": duration,
+    "error_code": request.state.error_code,
+    "message": request.state.error_message
+  }
+
+  tasks = BackgroundTasks()
+  tasks.add_task(save_log, log_data)
+
+  response.background = tasks
+
+  response.headers["X-Request-ID"] = str(
+    request.state.request_id
+  )
+
+  return response
+```
+
+執行流程：
+```text
+1. Client發送HTTP Request
+2. Middleware產生Request ID
+3. Endpoint執行
+4. Exception Handler處理預期錯誤
+5. Middleware計算Duration
+6. 建立Structured Log
+7. HTTP Response回傳Client
+8. BackgroundTasks寫入PostgreSQL
+```
+
+此程式為教學簡化版本。注意：
+- 直接設定`response.background`可能覆蓋既有Background Tasks。
+- 未預期例外可能在Middleware與Exception Handler重複記錄。
+- Streaming Response的完成時間與錯誤處理需要額外設計。
+- BackgroundTasks不保證Log持久化。
+- 真正需要高可靠度的稽核Log，應使用Message Queue與獨立Worker。或是和業務資料放在同一個資料庫 transaction 中提交。
+
+### 8. API測試
+加入測試Endpoint：
+```python
+@app.get("/courses/{course_id}")
+async def get_course(course_id: int):
+  if course_id == 0:
+    raise HTTPException(
+      status_code=404,
+      detail="Course not found"
+    )
+
+  if course_id == 999:
+    raise RuntimeError("Simulated server failure")
+
+  return {
+    "id": course_id,
+    "name": "Web Programming"
+  }
+```
+
+啟動：
+```bash
+uvicorn app.main:app --reload
+```
+
+測試：
+```http
+GET /courses/1
+GET /courses/0
+GET /courses/999
+GET /courses/abc
+```
+
+預期：
+| Request | HTTP Status | Log Level |
+|---|---|---|
+| /courses/1 | 200 | INFO |
+| /courses/0 | 404 | WARNING |
+| /courses/999 | 500 | ERROR |
+| /courses/abc | 422 | WARNING |
+
+驗證：
+- Client是否收到統一JSON？
+- 每筆Request是否產生唯一Request ID？
+- PostgreSQL是否正確記錄Status？
+- 是否記錄執行時間？
+- 發生500錯誤時，是否避免洩漏內部資訊？
+
+### 9. PostgreSQL Log查詢
+
+#### 9.1 最近20筆API紀錄
+
+```sql
+SELECT
+  request_id,
+  level,
+  method,
+  path,
+  status_code,
+  duration_ms,
+  created_at
+FROM api_logs
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+#### 9.2 查詢錯誤紀錄
+
+```sql
+SELECT *
+FROM api_logs
+WHERE status_code >= 400
+ORDER BY created_at DESC;
+```
+
+#### 9.3 統計各API錯誤數量
+
+```sql
+SELECT
+  path,
+  status_code,
+  COUNT(*) AS error_count
+FROM api_logs
+WHERE status_code >= 400
+GROUP BY path, status_code
+ORDER BY error_count DESC;
+```
+
+#### 9.4 統計API平均執行時間
+
+```sql
+SELECT
+  path,
+  COUNT(*) AS requests,
+  ROUND(AVG(duration_ms)::numeric, 2) AS avg_ms
+FROM api_logs
+GROUP BY path
+ORDER BY avg_ms DESC;
+```
+
+#### 9.5 查詢Session操作紀錄
+
+```sql
+SELECT
+  s.id AS session_id,
+  l.request_id,
+  l.method,
+  l.path,
+  l.status_code,
+  l.created_at
+FROM api_sessions s
+JOIN api_logs l
+  ON s.id = l.session_id
+WHERE s.id = '550e8400-e29b-41d4-a716-446655440000'
+ORDER BY l.created_at;
+```
+
+注意：目前API範例尚未實作Session建立與驗證，因此Log的session_id為NULL。完成Session整合後，才會出現1:N關聯資料。
+
+### 10. Security Considerations
+
+#### 10.1 不應記錄的資訊
+- Password
+- JWT Access Token
+- Refresh Token
+- Session Cookie
+- Authorization Header
+- API Key
+- 個人敏感資料
+- 完整SQL錯誤與資料庫連線密碼
+
+#### 10.2 Log Injection
+
+使用者可能在輸入內容加入換行或控制字元，影響Log閱讀與分析。建議：
+- 使用結構化JSON Log。
+- 限制可記錄的欄位。
+- 不直接記錄完整Request Body。
+- 對不可信任字串進行長度限制與必要的清理。
+
+#### 10.3 Log Retention
+
+Log不應無限期保存。應根據系統需求設定：
+- 保存期限。
+- 存取權限。
+- 定期清除或封存。
+- 資料庫容量監控。
+
+#### 10.4 Session Security
+Session ID不等於Authentication。應注意：
+- Session ID必須不可預測。
+- Server應驗證Session有效性。
+- Session應設定過期時間。
+- 登出後應使Session失效。
+- 不可直接信任Client傳入的Session ID。
+
+### 11. BackgroundTasks vs. Message Queue
+
+| 比較 | FastAPI BackgroundTasks | Message Queue + Worker |
+|---|---|---|
+| 實作難度 | 低 | 較高 |
+| 額外服務 | 不需要 | 通常需要 |
+| API回應後執行 | 支援 | 支援 |
+| 獨立Process | 否 | 可以 |
+| 持久化Queue | 無 | 視系統設計 |
+| Retry機制 | 需自行實作 | 通常可配置 |
+| 進程中斷風險 | 可能遺失Log | 可降低遺失風險 |
+| 適用情境 | 教學、非關鍵Log | 大型系統、重要稽核紀錄 |
+
+注意：BackgroundTasks雖然可以在Response送出後執行，但不等於可靠的非同步工作佇列。若Log屬於資安稽核紀錄，應考慮可靠的持久化機制、Retry及失敗告警。
+
+### 12. AI Coding實作練習
+
+#### Task 1：Exception Handling
+Prompt：
+> 請協助FastAPI建立統一Exception Handler，處理HTTPException、RequestValidationError與未預期的Exception，回傳一致JSON格式。500錯誤不得暴露Traceback或SQL細節。
+
+#### Task 2：Middleware
+Prompt：
+> 請建立FastAPI Middleware，為每個HTTP Request產生UUID Request ID，計算執行時間，並記錄HTTP Method、Path、Status Code與Duration。
+
+#### Task 3：PostgreSQL Logging
+Prompt：
+> 請建立PostgreSQL api_sessions與api_logs資料表，使用1:N關聯，並透過psycopg 3的AsyncConnection寫入Structured Log。所有SQL必須使用Parameterized Query。
+
+#### Task 4：Background Logging
+Prompt：
+> 請使用FastAPI BackgroundTasks，在HTTP Response送出後非同步寫入PostgreSQL。當資料庫寫入失敗時，不得造成已完成的API Response失敗，並說明此設計可能遺失Log的情況。
+
+#### Task 5：Security Review
+Prompt：
+> 請從OWASP安全性角度檢查FastAPI Logging系統，包括Sensitive Data Exposure、Log Injection、Session Hijacking及Log存取權限，指出問題並提出修正方式。
+
+### 13. ai.md學習心得
+
+學生需回答：
+
+1. Middleware與Exception Handler有何差異？
+2. 為何需要Request ID與Session ID兩種識別碼？
+3. `async def`與BackgroundTasks有何不同？
+4. BackgroundTasks是否保證Log一定成功寫入？
+5. 為何不應記錄JWT、Cookie與Password？
+6. 如果PostgreSQL暫時無法連線，API與Logging各會發生什麼情況？
+7. AI產生的Logging程式碼有哪些潛在資安問題？
+
+#### 本週筆記（足弓／錯誤處理與 Logging）
+
+（與 `ai.md` W10 同一套；細節實作見該週完成項。）
+
+1. **Middleware vs Exception Handler**  
+   Middleware 包住整段請求（進出都經過，適合計時、記 log）。Handler 只在丟出例外時接手，負責統一錯誤 JSON。
+
+2. **為何要 Request ID 與 Session ID**  
+   Request ID＝這一發 HTTP 的追蹤碼（串 log）。Session／登入態＝同一使用者跨多次請求。講義完整版兩者都有；本專案主要靠 JWT cookie 認人，請求 log 記 method／path／status／耗時。
+
+3. **`async def` vs BackgroundTasks**  
+   `async def`＝請求處理中可 await I/O，仍在回應完成前。BackgroundTasks＝回應先送出後再跑，不擋使用者拿到結果。
+
+4. **BackgroundTasks 保證 Log 寫成功？**  
+   **不保證。** 程序／DB 掛掉或任務失敗都可能丟 log，API 卻可能已 200。稽核級 log 要佇列／重試／告警。
+
+5. **為何不記 JWT、Cookie、Password**  
+   Log 常被多人看或進檔案；寫進去等於洩漏通行證與密碼。只記路徑、狀態、耗時等必要欄。
+
+6. **PostgreSQL 暫時連不上**  
+   依賴 DB 的 API 會失敗（錯誤 JSON／500）。若 log 也寫 PG 且在關鍵路徑，連 log 都可能失敗；BackgroundTasks 寫 log 時 API 仍可能先成功但 log 遺失。本專案目前 log 多半寫 `logs/app.log`，DB 掛了仍可能留下檔案 log。
+
+7. **AI Logging 常見資安問題**  
+   把 header／body／token 整段打進 log；字串拼 SQL；對外 500 回 traceback；log 檔可被網頁下載；缺少存取權限控管。
+
+建議Git Commit：
+
+```text
+feat: add unified exception handling
+feat: add request logging middleware
+feat: create PostgreSQL session and log tables
+feat: implement asynchronous background logging
+test: verify error responses and logging behavior
+docs: document logging security review
+```
+
+### 14. W10重點整理
+
+| 功能 | 技術 | 責任 |
+|---|---|---|
+| HTTP錯誤處理 | Exception Handler | 統一錯誤格式 |
+| Request攔截 | Middleware | 追蹤Request |
+| Request識別 | UUID | 單一請求追蹤 |
+| Session識別 | Session ID | 使用者工作階段追蹤 |
+| 結構化紀錄 | PostgreSQL JSONB | 儲存Log資料 |
+| 非同步寫入 | BackgroundTasks | 減少回應等待 |
+| 資料庫操作 | psycopg AsyncConnection | 非同步DB I/O |
+| 安全防護 | Parameterized Query | 防止SQL Injection |
+| 效能分析 | SQL Aggregation | 分析API錯誤率與延遲 |
+
+### 核心觀念
+
+**Exception Handler負責錯誤回應，Middleware負責Request追蹤，PostgreSQL負責Log持久化，BackgroundTasks負責將非關鍵Log寫入工作移至Response之後。**
+
+AI Coding的重點是理解各元件的責任、驗證非同步行為，並確認Logging機制不會引入新的資安風險。
+
+
+---
+
+## W11：Docker 化 {#Docker}
+
+### 學習目標
+把 FastAPI + PostgreSQL 用 docker-compose 一鍵啟動。
+
+### 操作步驟
+
+`Dockerfile`：
+```dockerfile
+FROM python:3.13-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip Install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+`docker-compose.yml`：
+```yaml
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_Member: dev_Member
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: FastAPI_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdaTa:/var/lib/postgresql/daTa
+
+  api:
+    build: .
+    depends_on:
+      - db
+    environment:
+      Database_URL: postgresql://dev_Member:dev_password@db:5432/FastAPI_dev
+    ports:
+      - "8000:8888"
+
+volumes:
+  pgdaTa:
+```
+
+啟動：
+```bash
+docker compose up --build
+```
+
+### 本週練習
+1. 確認容器重啟後資料還在（驗證 volume 是否正確掛載）
+2. 加入 migration 自動執行的步驟（在 `api` 容器啟動時先跑 `alembic upgrade head`）
+3. 研究並寫下：production 環境下，為什麼不建議用 `--reload`，也不建議把資料庫密碼寫死在 `docker-compose.yml`
+
+### 驗收標準
+- [ ] `docker compose up` 後，API 與資料庫都能正常運作且互通
+- [ ] 重啟容器後資料不遺失
+
+---
+
+## W12：部署與整合專題 {#deploy}
+
+### 學習目標
+把前 11 週的成果整合成一個完整、可展示的後端專案，並理解基本部署概念。
+
+### 本週任務（作為期末專題，不提供完整程式碼，靠你自己整合）
+
+1. **功能整合**：確認 CRUD、關聯查詢、Auth、分頁搜尋、錯誤處理、Logging 全部串在同一個專案中並能正常運作
+2. **文件補齊**：撰寫一份 `README.md`，說明專案架構、如何啟動、API 一覽（可搭配 `/docs` 的 Swagger UI）
+3. **CI 基礎**：用 GitHub Actions 設定一個簡單的 workflow，每次 push 自動執行 `pytest`
+4. **部署嘗試**（擇一）：
+   - 部署到 Render / Railway 等平台的免費方案
+   - 或在自己的雲端主機用 docker-compose 跑起來
+5. **架構回顧**：以你的 software architect 背景，寫一頁簡短的技術筆記，評估這個專案目前的**架構限制**（例如：沒有 rate limiting、沒有 cache layer、沒有背景任務佇列），並列出如果要正式上線，你會優先補強哪三項
+
+### 驗收標準
+- [ ] 專案可以從乾淨環境（新 clone 下來）依照 README 步驟成功啟動
+- [ ] CI 能在 push 時自動跑測試並回報結果
+- [ ] 完成架構限制評估筆記
+
+---
+
+## 學習方式提醒
+
+每週的「本週練習」請自己動手寫，卡住時可以帶著具體錯誤訊息來討論，而不是直接要完整程式碼——這樣 12 週後你會真正掌握這套技術棧的操作邏輯，而不只是有一份能跑的程式碼。
+
+
+-------------------------------------------------------------
 ## W7：測試（pytest）{#pytest}
 
 用 pytest + FastAPI TestClient 對 CRUD 與 Auth 寫自動化測試。
@@ -1849,187 +3872,3 @@ async def list_notes(db: AsyncSession = Depends(get_db)):
 - **何時 async 有用**：等 DB／網路（I/O）時可交錯處理請求；SAM／重 CPU 仍不該塞進 API event loop（繼續放 worker）。
 - 並發：`tests/test_pool_concurrent.py`；啟動時 `main.py` lifespan 開關池。
 - Windows：psycopg async 不能用 ProactorEventLoop，`main.py`／`conftest.py` 改 `WindowsSelectorEventLoopPolicy`。
-
----
-
-## W9：進階查詢：分頁、篩選、搜尋 {#paging}
-
-### 學習目標
-實作實務系統必備的分頁、動態篩選、關鍵字搜尋。
-
-### 操作步驟
-
-```python
-from FastAPI import Query
-
-@router.get("/", response_model=list[NoteResponse])
-async def list_notes(
-    db: AsyncSession = Depends(get_db),
-    skip: int = 0,
-    limit: int = Query(default=20, le=100),
-    search: str | None = None,
-    is_archived: bool | None = None,
-):
-    stmt = select(Note)
-    if search:
-        stmt = stmt.where(Note.title.ilike(f"%{search}%"))
-    if is_archived is not None:
-        stmt = stmt.where(Note.is_archived == is_archived)
-    stmt = stmt.offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    return result.scalars().all()
-```
-
-### 本週練習
-1. 加上排序參數（`sort_by`, `order`），允許依 `created_at` 或 `title` 排序
-2. 回傳分頁時，附上總筆數（`X-ToTal-Count` header 或包在 response body）
-3. 針對 `search` 欄位思考：`ilike` 在大資料量時的效能問題，並研究 PostgreSQL 全文搜尋（`tsvector`）作為進階選項
-
-### 驗收標準
-- [ ] 分頁、篩選、搜尋可以同時組合使用
-- [ ] `limit` 有上限保護，避免一次撈出過多資料
-
----
-
-## W10：錯誤處理、Logging、Middleware {#logging}
-
-### 學習目標
-建立統一的錯誤回應格式與結構化 log。
-
-### 操作步驟
-
-`app/core/exceptions.py`：
-```python
-from FastAPI import Request
-from FastAPI.responses import JSONResponse
-
-class AppException(Exception):
-    def __init__(self, Status_code: int, message: str):
-        self.Status_code = Status_code
-        self.message = message
-
-async def app_exception_handler(request: Request, exc: AppException):
-    return JSONResponse(
-        Status_code=exc.Status_code,
-        content={"error": exc.message, "path": str(request.url)},
-    )
-```
-
-在 `main.py` 註冊：
-```python
-from app.core.exceptions import AppException, app_exception_handler
-app.add_exception_handler(AppException, app_exception_handler)
-```
-
-Logging middleware：
-```python
-import time, logging
-logger = logging.getLogger("app")
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start = time.time()
-    response = await call_next(request)
-    duration = time.time() - start
-    logger.info(f"{request.method} {request.url.path} {response.Status_code} {duration:.3f}s")
-    return response
-```
-
-### 本週練習
-1. 把所有 `HTTPException` 統一改成自訂的 `AppException`，確保錯誤格式一致
-2. 設定 log 同時輸出到 console 與檔案，並區分 `INFO` / `ERROR` 等級
-3. 加一個全域的「未預期例外」處理器，避免 500 錯誤時把 sTack trace 洩漏給前端
-
-### 驗收標準
-- [ ] 所有錯誤回應格式一致
-- [ ] Log 能追蹤到每個請求的方法、路徑、狀態碼、耗時
-
----
-
-## W11：Docker 化 {#Docker}
-
-### 學習目標
-把 FastAPI + PostgreSQL 用 docker-compose 一鍵啟動。
-
-### 操作步驟
-
-`Dockerfile`：
-```dockerfile
-FROM python:3.13-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip Install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-`docker-compose.yml`：
-```yaml
-services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_Member: dev_Member
-      POSTGRES_PASSWORD: dev_password
-      POSTGRES_DB: FastAPI_dev
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdaTa:/var/lib/postgresql/daTa
-
-  api:
-    build: .
-    depends_on:
-      - db
-    environment:
-      Database_URL: postgresql://dev_Member:dev_password@db:5432/FastAPI_dev
-    ports:
-      - "8000:8888"
-
-volumes:
-  pgdaTa:
-```
-
-啟動：
-```bash
-docker compose up --build
-```
-
-### 本週練習
-1. 確認容器重啟後資料還在（驗證 volume 是否正確掛載）
-2. 加入 migration 自動執行的步驟（在 `api` 容器啟動時先跑 `alembic upgrade head`）
-3. 研究並寫下：production 環境下，為什麼不建議用 `--reload`，也不建議把資料庫密碼寫死在 `docker-compose.yml`
-
-### 驗收標準
-- [ ] `docker compose up` 後，API 與資料庫都能正常運作且互通
-- [ ] 重啟容器後資料不遺失
-
----
-
-## W12：部署與整合專題 {#deploy}
-
-### 學習目標
-把前 11 週的成果整合成一個完整、可展示的後端專案，並理解基本部署概念。
-
-### 本週任務（作為期末專題，不提供完整程式碼，靠你自己整合）
-
-1. **功能整合**：確認 CRUD、關聯查詢、Auth、分頁搜尋、錯誤處理、Logging 全部串在同一個專案中並能正常運作
-2. **文件補齊**：撰寫一份 `README.md`，說明專案架構、如何啟動、API 一覽（可搭配 `/docs` 的 Swagger UI）
-3. **CI 基礎**：用 GitHub Actions 設定一個簡單的 workflow，每次 push 自動執行 `pytest`
-4. **部署嘗試**（擇一）：
-   - 部署到 Render / Railway 等平台的免費方案
-   - 或在自己的雲端主機用 docker-compose 跑起來
-5. **架構回顧**：以你的 software architect 背景，寫一頁簡短的技術筆記，評估這個專案目前的**架構限制**（例如：沒有 rate limiting、沒有 cache layer、沒有背景任務佇列），並列出如果要正式上線，你會優先補強哪三項
-
-### 驗收標準
-- [ ] 專案可以從乾淨環境（新 clone 下來）依照 README 步驟成功啟動
-- [ ] CI 能在 push 時自動跑測試並回報結果
-- [ ] 完成架構限制評估筆記
-
----
-
-## 學習方式提醒
-
-每週的「本週練習」請自己動手寫，卡住時可以帶著具體錯誤訊息來討論，而不是直接要完整程式碼——這樣 12 週後你會真正掌握這套技術棧的操作邏輯，而不只是有一份能跑的程式碼。
-
-
